@@ -518,7 +518,38 @@ export class Game {
     this.pickups.update(dt, this.time);
     this.effects.update(dt);
     this.automap.reveal(dt);
+    this.cullHidden(dt);
     this.hud.update(dt, this.fps);
+  }
+
+  /**
+   * Don't draw 3D models the player can't possibly see (behind walls or
+   * closed doors). Checked a few times a second with sight lines - this
+   * keeps the number of things drawn low enough for phones.
+   */
+  cullHidden(dt) {
+    this.cullT = (this.cullT || 0) - dt;
+    const p = this.player, L = this.level;
+    if (this.cullT <= 0) {
+      this.cullT = 0.15;
+      const ex = p.x, ey = p.eyeY, ez = p.z;
+      const test = (o, h) => {
+        const dx = o.x - ex, dz = o.z - ez, d = Math.hypot(dx, dz) || 1;
+        if (d < 3) return true;
+        const px = -dz / d * 0.5, pz = dx / d * 0.5;          // sideways offset for wide objects
+        const y0 = o.y + 0.3, y1 = o.y + h * 0.9;
+        return hasLineOfSight(L, ex, ey, ez, o.x, y1, o.z) || hasLineOfSight(L, ex, ey, ez, o.x, y0, o.z)
+          || hasLineOfSight(L, ex, ey, ez, o.x + px, y1, o.z + pz) || hasLineOfSight(L, ex, ey, ez, o.x - px, y1, o.z - pz);
+      };
+      for (const e of this.enemies) e.seen = test(e, e.height);
+      if (this.ally) this.ally.seen = test(this.ally, 1.8);
+      for (const it of this.pickups.items) it.seen = !it.taken && test(it, 0.6);
+      for (const b of this.pickups.barrels) b.seen = test(b, 1.1);
+      for (const d of this.pickups.decor) d.seen = test(d, 2);
+    }
+    const hide = (obj) => { if (obj.seen === false) obj.sprite.visible = false; };
+    this.enemies.forEach(hide); if (this.ally) hide(this.ally);
+    this.pickups.items.forEach(hide); this.pickups.barrels.forEach(hide); this.pickups.decor.forEach(hide);
   }
 
   checkLiftWalkOn(dt) {

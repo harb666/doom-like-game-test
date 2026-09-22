@@ -119,6 +119,7 @@ export class Pickups {
     }
     for (const b of this.barrels) b.update(dt);
     for (const d of this.decor) {
+      d.sprite.visible = !farAway(game, d.x, d.z);
       lightModel(game, d.mats, d.x, d.y, d.z, 0.3);
       if (d.glow) d.glow.material.opacity = 0.3 + Math.sin(time * 9 + d.x) * 0.05;
     }
@@ -154,6 +155,7 @@ class Barrel {
   }
   update(dt) {
     if (this.dead) return;
+    this.sprite.visible = !farAway(this.game, this.x, this.z);
     lightModel(this.game, this.mats, this.x, this.y, this.z, 0.3);
     if (this.fuse >= 0) {
       this.fuse -= dt;

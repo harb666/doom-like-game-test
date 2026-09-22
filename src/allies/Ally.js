@@ -114,6 +114,7 @@ export class Ally {
     const pose = this.flashT > 0 ? 'fire' : shooting ? 'aim' : this.moving ? 'walk' : 'idle';
     this.poseT = pose === this.pose ? (this.poseT || 0) + dt : 0; this.pose = pose;
     const root = this.model.root;
+    root.visible = true;
     root.position.set(this.x, this.y, this.z);
     root.rotation.y = this.facing;
     this.model.update(pose, pose === 'idle' ? this.animT : this.walkPhase, this.poseT, 0);

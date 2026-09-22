@@ -16,6 +16,20 @@ function silentWavUrl() {
   return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
 }
 
+/** A long, dark, cavernous reverb made from decaying noise. */
+function makeImpulse(ctx, seconds, decay) {
+  const len = Math.floor(ctx.sampleRate * seconds), buf = ctx.createBuffer(2, len, ctx.sampleRate);
+  for (let ch = 0; ch < 2; ch++) {
+    const d = buf.getChannelData(ch);
+    let lp = 0;
+    for (let i = 0; i < len; i++) {
+      lp += ((Math.random() * 2 - 1) - lp) * 0.35;           // darken the tail
+      d[i] = lp * Math.pow(1 - i / len, decay);
+    }
+  }
+  return buf;
+}
+
 export class AudioSystem {
   constructor(game) {
     this.game = game;
@@ -53,6 +67,12 @@ export class AudioSystem {
       this.master.connect(comp); comp.connect(ctx.destination);
       this.sfx = ctx.createGain(); this.sfx.connect(this.master);
       this.musicBus = ctx.createGain(); this.musicBus.connect(this.master);
+      // big echoing reverb shared by sound effects and music (Doom 64 atmosphere)
+      this.reverb = ctx.createConvolver();
+      this.reverb.buffer = makeImpulse(ctx, 3.2, 2.4);
+      this.reverb.connect(this.master);
+      this.sfxSend = ctx.createGain(); this.sfxSend.gain.value = 0.35; this.sfx.connect(this.sfxSend); this.sfxSend.connect(this.reverb);
+      this.musicSend = ctx.createGain(); this.musicSend.gain.value = 0.8; this.musicBus.connect(this.musicSend); this.musicSend.connect(this.reverb);
       this.noise = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
       const d = this.noise.getChannelData(0);
       for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
@@ -71,7 +91,7 @@ export class AudioSystem {
     if (!this.ctx) return;
     const S = this.game.settings;
     this.sfx.gain.value = S.sfxVolume;
-    this.musicBus.gain.value = S.musicVolume * 0.55;
+    this.musicBus.gain.value = S.musicVolume * 0.9;
   }
 
   suspend() { if (this.ctx && this.ctx.state === 'running') this.ctx.suspend(); }
@@ -112,7 +132,9 @@ export class AudioSystem {
     // pan from the angle relative to where the player is facing
     const rightX = Math.cos(p.yaw), rightZ = -Math.sin(p.yaw);
     const pan = d > 0.5 ? ((dx * rightX + dz * rightZ) / d) * 0.7 : 0;
-    this.play(name, v, pan, 1);
+    // monster voices are pitched down for a deeper, nastier sound
+    const rate = /(Sight|Pain|Death|Idle)$/.test(name) && !name.startsWith('vex') ? 0.8 : 1;
+    this.play(name, v, pan, rate);
   }
 
   startAmbient() {
@@ -194,9 +216,9 @@ const rnd = (a, b) => a + Math.random() * (b - a);
 
 const SOUNDS = {
   // ----- weapons -----
-  pistol: (s) => { s.noise({ dur: 0.14, vol: 0.9, type: 'bandpass', f: 2200, f2: 500, q: 0.8 }); s.tone({ type: 'square', f: 190, f2: 55, dur: 0.09, vol: 0.35 }); },
+  pistol: (s) => { s.noise({ dur: 0.16, vol: 0.9, type: 'bandpass', f: 1700, f2: 400, q: 0.8 }); s.tone({ type: 'sine', f: 150, f2: 45, dur: 0.14, vol: 0.6 }); },
   machinegun: (s) => { s.noise({ dur: 0.11, vol: 0.95, type: 'bandpass', f: rnd(1600, 2000), f2: 500, q: 0.8 }); s.tone({ type: 'sine', f: 130, f2: 45, dur: 0.1, vol: 0.55 }); s.noise({ dur: 0.03, vol: 0.35, type: 'highpass', f: 5000 }); },
-  shotgun: (s) => { s.noise({ dur: 0.45, vol: 1.2, type: 'lowpass', f: 4000, f2: 250 }); s.tone({ type: 'sine', f: 110, f2: 38, dur: 0.3, vol: 0.9 }); s.noise({ dur: 0.08, vol: 0.6, type: 'highpass', f: 3000 }); },
+  shotgun: (s) => { s.noise({ dur: 0.55, vol: 1.3, type: 'lowpass', f: 3200, f2: 180 }); s.tone({ type: 'sine', f: 95, f2: 30, dur: 0.4, vol: 1.1 }); s.noise({ dur: 0.08, vol: 0.5, type: 'highpass', f: 2600 }); },
   repeater: (s) => { s.noise({ dur: 0.08, vol: 0.7, type: 'bandpass', f: rnd(2400, 3000), f2: 800, q: 0.9 }); s.tone({ type: 'square', f: 240, f2: 80, dur: 0.05, vol: 0.28 }); },
   plasma: (s) => { s.tone({ type: 'sawtooth', f: 1400, f2: 260, dur: 0.16, vol: 0.28 }); s.tone({ type: 'square', f: 500, f2: 1600, dur: 0.07, vol: 0.12 }); },
   rocket: (s) => { s.noise({ dur: 0.55, vol: 0.7, type: 'lowpass', f: 1400, f2: 180, attack: 0.02 }); s.tone({ type: 'sawtooth', f: 140, f2: 50, dur: 0.35, vol: 0.3 }); },

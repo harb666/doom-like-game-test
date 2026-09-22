@@ -130,3 +130,42 @@ export function put(parent, mesh, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0) {
   parent.add(mesh);
   return mesh;
 }
+
+/**
+ * Performance: inside every joint, merge child meshes that share a material
+ * into one mesh (fewer draw calls - important on phones). Looks identical.
+ */
+export function mergeStatic(root) {
+  const nodes = [];
+  root.traverse(o => nodes.push(o));
+  for (const node of nodes) {
+    const byMat = new Map();
+    for (const c of node.children) {
+      if (!c.isMesh || Array.isArray(c.material) || c.children.length) continue;
+      if (!byMat.has(c.material)) byMat.set(c.material, []);
+      byMat.get(c.material).push(c);
+    }
+    for (const [mat, meshes] of byMat) {
+      if (meshes.length < 2) continue;
+      const parts = meshes.map(m => {
+        m.updateMatrix();
+        const g = (m.geometry.index ? m.geometry.toNonIndexed() : m.geometry.clone());
+        g.applyMatrix4(m.matrix);
+        return g;
+      });
+      const merged = new THREE.BufferGeometry();
+      for (const name of ['position', 'normal', 'uv', 'color']) {
+        if (!parts.every(p => p.attributes[name])) continue;
+        const size = parts[0].attributes[name].itemSize;
+        const arr = new Float32Array(parts.reduce((n, p) => n + p.attributes[name].array.length, 0));
+        let off = 0;
+        for (const p of parts) { arr.set(p.attributes[name].array, off); off += p.attributes[name].array.length; }
+        merged.setAttribute(name, new THREE.BufferAttribute(arr, size));
+      }
+      merged.computeBoundingSphere();
+      for (const m of meshes) node.remove(m);
+      node.add(new THREE.Mesh(merged, mat));
+    }
+  }
+  return root;
+}

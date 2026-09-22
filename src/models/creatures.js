@@ -5,7 +5,7 @@
 //        'aim' (ranged wind-up) | 'fire' (ranged shot) | 'pain' | 'dead'
 
 import * as THREE from 'three';
-import { MaterialSet, box, cyl, ball, cone, joint, put, paintedTexture } from './common.js';
+import { MaterialSet, box, cyl, ball, cone, joint, put, paintedTexture, mergeStatic } from './common.js';
 import { glowTexture } from '../effects/Effects.js';
 
 const PI = Math.PI;
@@ -349,6 +349,7 @@ export function buildCreature(type) {
   const root = new THREE.Group();
   root.add(m.P ? m.P.root : m.root);
   const inner = m.P ? m.P.root : m.root;
+  mergeStatic(inner);
   return {
     root, mats: m.M, float: !!m.float,
     update(pose, t, poseT, deathT) {

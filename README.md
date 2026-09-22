@@ -1,7 +1,10 @@
 # MAWBREAKER
 
-An original retro first-person shooter inspired by 1990s classics — fast movement,
-maze-like levels, keycards, secrets, explosive barrels and demonic monsters.
+An original first-person shooter inspired by the 1990s classics — fast movement,
+maze-like levels, keycards, secrets, explosive barrels and demonic monsters —
+with late-90s Quake 2-style 3D graphics (3D monsters, guns and items, coloured
+lighting with shadows, real-time muzzle-flash lights) and a Doom 64-style
+dark ambient soundtrack.
 It runs in any modern web browser, **including iPhone Safari with touch controls**.
 No installs, no build step, no game engine — just open `index.html` from a web server.
 
@@ -33,7 +36,7 @@ Turn your phone sideways. If there's no sound, turn the volume up and tap the sc
 | Right thumb: drag to look / aim | Mouse |
 | **FIRE**: hold to shoot (you can also drag on it to aim) | Left click / Ctrl |
 | **USE**: doors, lifts, secret walls | E / Space / right click |
-| **WPN** or tap the weapon box: next weapon | 1-5, Q, mouse wheel |
+| **WPN** or tap the weapon box: next weapon | 1-6, Q, mouse wheel |
 | **MAP**: map overlay | Tab / M |
 | **II**: pause | Esc / P |
 
@@ -43,7 +46,7 @@ Doors open automatically when you walk into them (can be turned off in Settings)
 
 - **3 levels**: *Intake Station* (tutorial-paced base with a lift, slime pit, outdoor arena),
   *The Foundry* (huge open lava hall with catwalks), *The Maw Gate* (boss arena).
-- **5 weapons**: Rivet Pistol, Breacher Scattergun, Buzzsaw Repeater, Ion Lancer (plasma), Hellbore Launcher (rockets with splash damage).
+- **6 weapons**: Rivet Pistol, Havoc Machinegun (Quake-style, recoil climbs as you fire), Breacher Scattergun, Buzzsaw Repeater, Ion Lancer (plasma), Hellbore Launcher (rockets with splash damage).
 - **6 monsters**: Husk (clawing shambler), Rifter (armoured gunner), Bile Spitter (acid lobber),
   Maw Hound (fast charging beast), Cinder Wraith (floating fireball caster), and **The Warden** (boss).
 - **VEX**, a companion who follows you, shoots monsters and calls out in a (built-in text-to-speech) female voice. Toggle her and her voice in Settings.
@@ -51,7 +54,7 @@ Doors open automatically when you walk into them (can be turned off in Settings)
   explosive toxic canisters, hazard floors, lifts, stairs, sky areas.
 - Title / difficulty / settings / pause / level complete / game over / victory screens.
 - Saves your progress and settings automatically on the device.
-- Procedural sound effects and music (Web Audio), automatic graphics quality for phones.
+- Procedural sound effects and dark ambient music with cavernous reverb (Web Audio), automatic graphics quality for phones.
 
 ## Project layout
 
@@ -81,18 +84,22 @@ src/
   weapons/
     weaponDefs.js        Weapon + ammo + projectile stats
     WeaponSystem.js      Firing, switching, aim assist, drawing the gun
-    weaponSprites.js     First-person gun art
+    ViewModel.js         Draws the 3D gun in your hands
     Projectiles.js       Plasma, rockets, fireballs, acid
   allies/Ally.js         VEX the companion (following, targeting, callouts)
   enemies/
     enemyDefs.js         Monster stats
     Enemy.js             Monster AI (idle / chase / attack / pain / death)
     FlowField.js         Path-finding for all monsters at once
-    enemySprites.js      Monster art
   items/
     Pickups.js           Health, armour, ammo, weapons, keys, barrels, lamps
-    itemSprites.js       Item art
   effects/Effects.js     Blood, sparks, explosions, screen flashes, shake
+  gfx/Lighting.js        Baked coloured lighting with shadows (Quake-style lightmaps)
+  gfx/DynamicLights.js   Real-time lights from muzzle flashes, rockets, fireballs
+  models/common.js       Helpers for building low-poly 3D models
+  models/creatures.js    3D monsters + VEX, with joint animations
+  models/weapons.js      3D guns (first person and pickups)
+  models/items.js        3D pickups, canisters, lamps
   audio/Audio.js         Sound effects (synthesised)
   audio/Music.js         Music sequencer and songs
   audio/Voice.js         VEX's spoken lines (built-in speech voice)

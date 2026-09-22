@@ -1,7 +1,7 @@
 // 3D pickups and props. Pickups spin and bob like classic Quake items.
 
 import * as THREE from 'three';
-import { MaterialSet, box, cyl, ball, cone, put, torus, shade } from './common.js';
+import { MaterialSet, box, cyl, ball, cone, put, torus, shade, mergeStatic } from './common.js';
 import { glowTexture } from '../effects/Effects.js';
 
 function glow(color, size) {
@@ -96,6 +96,7 @@ export function buildItem(type, weaponBuilder) {
     w.position.y = 0.3;
     g.add(w);
   } else ITEM_MODELS[type](g, M);
+  mergeStatic(g);
   return { root, spin: g, mats: M };
 }
 
@@ -108,6 +109,7 @@ export function buildBarrel() {
   put(root, cyl(0.34, 0.34, 0.03, top, 12, 'bottom'), 0, 1.05, 0);
   put(root, cone(0.13, 0.2, M.make(0xf0d020, { glow: 0x806000 }), 3), 0, 0.5, 0.4, Math.PI / 2, 0, 0);
   addGlow(root, 0x8aff40, 0.9, 0, 1.15, 0);
+  mergeStatic(root);
   return { root, mats: M };
 }
 
@@ -131,5 +133,6 @@ export function buildDecor(type) {
     put(root, ball(0.14, flesh, 0), 0.3, 0.1, 0.1);
     put(root, box(0.4, 0.05, 0.05, bone, 'bottom'), 0.1, 0.02, -0.25, 0, 1.1, 0);
   }
+  mergeStatic(root);
   return { root, mats: M };
 }
