@@ -19,6 +19,7 @@ import { FlowField } from '../enemies/FlowField.js';
 import { Pickups } from '../items/Pickups.js';
 import { Effects, glowTexture } from '../effects/Effects.js';
 import { AudioSystem } from '../audio/Audio.js';
+import { Voice } from '../audio/Voice.js';
 import { HUD } from '../ui/HUD.js';
 import { Menus } from '../ui/Menus.js';
 import { Automap } from '../ui/Automap.js';
@@ -48,6 +49,7 @@ export class Game {
     this.input = new Input(this);
     this.touch = new TouchControls(this, this.input);
     this.audio = new AudioSystem(this);
+    this.voice = new Voice(this);
     this.player = new Player(this);
     this.effects = new Effects(this);
     this.weapons = new WeaponSystem(this);
@@ -184,7 +186,7 @@ export class Game {
     this.beginPlay();
     this.hud.message(`${this.levelDef.name.toUpperCase()}`, true);
     if (this.levelDef.subtitle) this.hud.message(this.levelDef.subtitle);
-    if (this.ally) this.hud.message(`${ALLY.name} is fighting at your side.`);
+    if (this.ally) { this.hud.message(`${ALLY.name} is fighting at your side.`); this.voice.say('start', { force: true }); }
   }
 
   restartLevel() {
@@ -270,6 +272,7 @@ export class Game {
   pause() {
     if (this.state !== 'playing') return;
     this.state = 'paused';
+    this.voice.stop();
     this.input.enabled = false;
     this.input.unlock();
     this.touch.show(false);
@@ -290,6 +293,7 @@ export class Game {
   }
 
   quitToTitle() {
+    this.voice.stop();
     this.unloadLevel();
     this.state = 'title';
     this.hud.show(false);
@@ -411,6 +415,7 @@ export class Game {
     this.stats.secrets++;
     this.hud.message('A SECRET IS REVEALED!', true);
     this.audio.play('secret');
+    if (this.ally) this.voice.say('secret', { force: true });
   }
 
   onEnemyKilled() { this.stats.kills++; }

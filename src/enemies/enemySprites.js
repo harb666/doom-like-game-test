@@ -155,37 +155,74 @@ const PAINTERS = {
 };
 
 // Friendly companion (see src/allies/Ally.js) - uses the same frame system.
-PAINTERS.ally = { w: 40, h: 64, paint(p, pose) {
-  const cx = 20, skin = 0xd8a888, hair = 0x1e1614, hairHi = 0x3a2a24, jacket = 0x80868e, jacketDk = 0x5a5f66, leg = 0x16161a;
+PAINTERS.ally = { w: 48, h: 80, paint(p, pose) {
+  const cx = 24, skin = 0xe2b49a, skinSh = 0xc08c74, hair = 0x1a1210, hairHi = 0x3e2c24;
+  const jacket = 0x8a9098, jacketDk = 0x60666e, seam = 0xc4c8cc, leg = 0x141418;
   const lo = pose === 'walk1' ? 2 : pose === 'walk0' ? -2 : 0;
-  // hair falling behind the shoulders
-  p.poly([[cx - 6, 6], [cx - 2, 6], [cx - 5, 36], [cx - 11, 32]], hair);
-  p.poly([[cx + 3, 5], [cx + 7, 8], [cx + 10, 33], [cx + 5, 35]], hair);
-  p.line(cx - 7, 12, cx - 9, 30, hairHi); p.line(cx + 6, 12, cx + 8, 30, hairHi);
-  // legs: black leggings + light trainers
-  p.poly([[cx - 7, 39], [cx - 1, 39], [cx - 2 + lo, 60], [cx - 7 + lo, 60]], leg);
-  p.poly([[cx + 1, 39], [cx + 7, 39], [cx + 7 - lo, 60], [cx + 2 - lo, 60]], shadeColor(leg, 1.3));
-  p.rect(cx - 8 + lo, 59, 7, 4, 0xd0d0d4); p.rect(cx + 1 - lo, 59, 7, 4, 0xd0d0d4);
-  // fitted grey zip jacket over a black top
-  p.poly([[cx - 9, 21], [cx + 9, 21], [cx + 7, 41], [cx - 7, 41]], jacket);
-  p.poly([[cx - 3, 21], [cx + 3, 21], [cx, 29]], 0x0e0e10);
-  p.line(cx, 29, cx, 40, jacketDk);
-  p.rect(cx - 7, 34, 14, 1, jacketDk);
-  // neck (with a small rose tattoo) and face
-  p.rect(cx - 2, 16, 4, 6, skin); p.px(cx - 2, 19, 0x3a3a3a); p.px(cx - 1, 20, 0x3a3a3a);
-  p.blob(cx, 11, 5, 6, skin);
-  p.blob(cx, 7, 6, 3.5, hair); p.blob(cx + 1, 2, 3, 3, hair);
-  p.rect(cx - 3, 11, 2, 1, 0x101010); p.rect(cx + 1, 11, 2, 1, 0x101010);
-  p.px(cx - 2, 12, 0x6a8aa0); p.px(cx + 2, 12, 0x6a8aa0);
-  p.rect(cx - 1, 15, 3, 1, 0xa05a64);
+  const wave = (x0, y0, x1, y1, w, c) => {           // a wavy lock of hair
+    const pts = [], back = [];
+    for (let i = 0; i <= 10; i++) {
+      const t = i / 10, x = x0 + (x1 - x0) * t + Math.sin(t * 9) * 1.6, y = y0 + (y1 - y0) * t;
+      const ww = w * (1 - t * 0.35);
+      pts.push([x - ww / 2, y]); back.unshift([x + ww / 2, y]);
+    }
+    p.poly(pts.concat(back), c);
+  };
+  // hair behind the body (back of the ponytail)
+  wave(cx + 5, 8, cx + 10, 40, 6, hair);
+  // legs: black leggings + white trainers
+  p.poly([[cx - 8, 50], [cx - 1, 50], [cx - 2 + lo, 75], [cx - 8 + lo, 75]], leg);
+  p.poly([[cx + 1, 50], [cx + 8, 50], [cx + 8 - lo, 75], [cx + 2 - lo, 75]], shadeColor(leg, 1.35));
+  p.rect(cx - 9 + lo, 74, 8, 5, 0xe0e0e4); p.rect(cx + 1 - lo, 74, 8, 5, 0xe0e0e4);
+  p.rect(cx - 9 + lo, 78, 8, 1, 0x8a8a90); p.rect(cx + 1 - lo, 78, 8, 1, 0x8a8a90);
+  // fitted grey half-zip, unzipped over a black top
+  p.poly([[cx - 12, 29], [cx + 12, 29], [cx + 10, 52], [cx - 10, 52]], jacket);
+  p.poly([[cx - 4, 28], [cx + 4, 28], [cx + 2, 44], [cx - 2, 44]], 0x0c0c0e);
+  p.line(cx - 4, 29, cx - 2, 44, jacketDk); p.line(cx + 4, 29, cx + 2, 44, jacketDk);
+  p.line(cx - 11, 33, cx - 4, 36, seam); p.line(cx + 11, 33, cx + 4, 36, seam);
+  p.rect(cx - 9, 46, 18, 1, jacketDk); p.rect(cx - 10, 51, 20, 1, jacketDk);
+  // raised collar
+  p.poly([[cx - 7, 24], [cx - 4, 24], [cx - 3, 30], [cx - 8, 30]], jacket);
+  p.poly([[cx + 4, 24], [cx + 7, 24], [cx + 8, 30], [cx + 3, 30]], jacket);
+  // neck with a rose tattoo
+  p.rect(cx - 3, 22, 6, 7, skin); p.rect(cx + 1, 22, 2, 7, skinSh);
+  p.blob(cx - 4, 27, 2, 2, 0x3a3a40); p.px(cx - 4, 27, 0x5a5a60); p.px(cx - 6, 29, 0x3a3a40); p.px(cx - 3, 30, 0x3a3a40);
+  // face
+  p.ellipse(cx, 15, 6.5, 8.5, skin);
+  p.rect(cx - 6, 15, 1, 5, skinSh); p.rect(cx + 5, 15, 1, 5, skinSh);        // contour
+  p.rect(cx - 5, 21, 2, 1, skinSh); p.rect(cx + 3, 21, 2, 1, skinSh);
+  // sleek hair pulled back into a high ponytail
+  p.blob(cx, 7, 7, 3.6, hair);
+  p.rect(cx - 6, 9, 12, 1, hair);
+  p.poly([[cx - 7, 8], [cx - 6, 8], [cx - 6, 12], [cx - 7, 12]], hair);
+  p.poly([[cx + 6, 8], [cx + 7, 8], [cx + 7, 12], [cx + 6, 12]], hair);
+  p.line(cx - 3, 5, cx + 3, 5, hairHi);
+  p.blob(cx + 2, 2, 3.5, 2.5, hair);
+  // brows, smoky eyes with lashes, blue-grey irises
+  p.rect(cx - 5, 11, 3, 1, 0x20140e); p.px(cx - 2, 11, 0x20140e); p.px(cx - 5, 12, 0x20140e);
+  p.rect(cx + 2, 11, 3, 1, 0x20140e); p.px(cx + 1, 11, 0x20140e); p.px(cx + 4, 12, 0x20140e);
+  p.rect(cx - 5, 13, 4, 1, 0x6a4a40); p.rect(cx + 1, 13, 4, 1, 0x6a4a40);
+  p.rect(cx - 5, 14, 4, 1, 0x0a0606); p.rect(cx + 1, 14, 4, 1, 0x0a0606);
+  p.px(cx - 6, 13, 0x0a0606); p.px(cx + 5, 13, 0x0a0606);
+  p.rect(cx - 4, 15, 2, 1, 0x8ab0c4); p.rect(cx + 2, 15, 2, 1, 0x8ab0c4);
+  p.px(cx - 5, 15, 0xf0e8e0); p.px(cx + 4, 15, 0xf0e8e0);
+  // nose and glossy mauve lips
+  p.px(cx, 17, skinSh); p.px(cx - 1, 18, skinSh);
+  p.rect(cx - 2, 20, 4, 1, 0x9a4e5e); p.rect(cx - 1, 21, 3, 1, 0xb86878); p.px(cx, 21, 0xe0a4b0);
+  // long wavy hair cascading over one shoulder, in front of the jacket
+  wave(cx - 9, 12, cx - 13, 58, 7, hair);
+  p.line(cx - 10, 16, cx - 12, 52, hairHi);
+  p.line(cx - 8, 22, cx - 10, 48, hairHi);
   // arms and sidearm
   if (pose === 'attack0' || pose === 'attack1') {
-    p.line(cx - 8, 23, cx - 2, 27, jacket, 3); p.line(cx + 8, 23, cx + 2, 27, jacket, 3);
-    p.rect(cx - 2, 24, 4, 5, 0x26282c);
-    if (pose === 'attack1') { p.ellipse(cx, 23, 5, 4, 0xffc040); p.ellipse(cx, 23, 2, 2, 0xffffff); }
+    p.line(cx - 11, 31, cx - 3, 36, jacket, 4); p.line(cx + 11, 31, cx + 3, 36, jacket, 4);
+    p.blob(cx, 36, 3, 2, skin);
+    p.rect(cx - 2, 31, 4, 5, 0x26282c);
+    if (pose === 'attack1') { p.ellipse(cx, 29, 6, 5, 0xffc040); p.ellipse(cx, 29, 2.5, 2, 0xffffff); }
   } else {
-    p.line(cx - 8, 23, cx - 10 + lo * 0.5, 38, jacket, 3); p.line(cx + 8, 23, cx + 10 - lo * 0.5, 38, jacket, 3);
-    p.rect(cx + 9 - lo * 0.5, 37, 3, 5, 0x26282c);
+    p.line(cx - 11, 31, cx - 13 + lo * 0.5, 50, jacket, 4); p.line(cx + 11, 31, cx + 13 - lo * 0.5, 50, jacket, 4);
+    p.blob(cx - 13 + lo * 0.5, 51, 2, 2, skin); p.blob(cx + 13 - lo * 0.5, 51, 2, 2, skin);
+    p.rect(cx + 12 - lo * 0.5, 50, 3, 7, 0x26282c);
   }
 } };
 

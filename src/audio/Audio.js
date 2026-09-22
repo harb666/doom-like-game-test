@@ -3,12 +3,29 @@
 
 import { Music } from './Music.js';
 
+// A tiny silent WAV, looped through a normal <audio> element. On iPhone this
+// switches the page into "media playback" mode, so game sound still plays
+// when the ring/silent switch is set to silent.
+function silentWavUrl() {
+  const rate = 8000, n = 4000, buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
+  const w = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+  w(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); w(8, 'WAVE'); w(12, 'fmt ');
+  v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+  w(36, 'data'); v.setUint32(40, n * 2, true);
+  return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
+}
+
 export class AudioSystem {
   constructor(game) {
     this.game = game;
     this.ctx = null;
     this.recent = new Map();
     this.music = null;
+    // Any real tap / click / key press (re)starts audio. iPhones only allow this
+    // on "touchend"/"click", not on "touchstart", so listen for those.
+    const kick = () => this.unlock();
+    for (const ev of ['touchend', 'click', 'keydown', 'pointerup']) document.addEventListener(ev, kick, { capture: true, passive: true });
   }
 
   /** Must be called from a tap/click - browsers (esp. iPhone) block sound until then. */
@@ -16,6 +33,15 @@ export class AudioSystem {
     try {
       if (navigator.audioSession && navigator.audioSession.type !== 'playback') navigator.audioSession.type = 'playback';
     } catch (_) { /* older Safari */ }
+    if (!this.mediaEl) {
+      try {
+        const el = document.createElement('audio');
+        el.setAttribute('playsinline', ''); el.setAttribute('x-webkit-airplay', 'deny');
+        el.loop = true; el.src = silentWavUrl();
+        this.mediaEl = el;
+      } catch (_) { /* ignore */ }
+    }
+    if (this.mediaEl && this.mediaEl.paused) this.mediaEl.play().catch(() => {});
     if (!this.ctx) {
       const AC = window.AudioContext || window.webkitAudioContext;
       if (!AC) return;
@@ -32,11 +58,13 @@ export class AudioSystem {
       for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
       this.music = new Music(this);
       this.applyVolumes();
+      if (this.game.state === 'title') this.music.play('menu');
       // play a silent blip to fully wake the audio hardware on iOS
       const b = ctx.createBuffer(1, 1, 22050), s = ctx.createBufferSource();
       s.buffer = b; s.connect(ctx.destination); s.start(0);
     }
-    if (this.ctx.state === 'suspended') this.ctx.resume();
+    if (this.ctx.state !== 'running' && !document.hidden) this.ctx.resume().catch?.(() => {});
+    this.game.voice?.prime();
   }
 
   applyVolumes() {
@@ -47,11 +75,12 @@ export class AudioSystem {
   }
 
   suspend() { if (this.ctx && this.ctx.state === 'running') this.ctx.suspend(); }
-  resume() { if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume(); }
+  resume() { if (this.ctx && this.ctx.state !== 'running') this.ctx.resume().catch?.(() => {}); }
 
   play(name, vol = 1, pan = 0, rate = 1) {
     const ctx = this.ctx;
-    if (!ctx || ctx.state !== 'running' || vol < 0.02) return;
+    if (!ctx || vol < 0.02) return;
+    if (ctx.state !== 'running') { this.resume(); return; }
     const recipe = SOUNDS[name];
     if (!recipe) return;
     // don't stack the same sound more than a few times per instant
@@ -195,6 +224,10 @@ const SOUNDS = {
   levelDone: (s) => { [262, 330, 392, 523, 392, 523, 659].forEach((f, i) => s.tone({ type: 'square', f, dur: 0.22, vol: 0.12, at: i * 0.12 })); },
   playerPain: (s) => { s.tone({ type: 'sawtooth', f: rnd(210, 240), f2: 150, dur: 0.22, vol: 0.4, filter: 900, q: 3 }); s.noise({ dur: 0.1, vol: 0.2, type: 'bandpass', f: 1200 }); },
   playerDeath: (s) => { s.tone({ type: 'sawtooth', f: 220, f2: 55, dur: 1.1, vol: 0.45, filter: 800, q: 3, vib: 6 }); s.noise({ dur: 0.5, vol: 0.3, type: 'lowpass', f: 800 }); },
+
+  // ----- VEX (female companion) : breathy vowel-shaped efforts -----
+  vexHup: (s) => { const f = rnd(250, 290); s.tone({ type: 'sawtooth', f, f2: f * 0.85, dur: 0.14, vol: 0.2, attack: 0.02, filter: 900, q: 4 }); s.tone({ type: 'triangle', f, f2: f * 0.85, dur: 0.14, vol: 0.14, attack: 0.02 }); s.noise({ dur: 0.12, vol: 0.12, type: 'bandpass', f: 2600, q: 2, attack: 0.01 }); },
+  vexLaugh: (s) => { for (let i = 0; i < 3; i++) { const f = 330 - i * 20; s.tone({ type: 'sawtooth', f, f2: f * 0.9, dur: 0.1, vol: 0.16, at: i * 0.13, attack: 0.015, filter: 1000, q: 4 }); s.tone({ type: 'triangle', f, dur: 0.1, vol: 0.1, at: i * 0.13 }); s.noise({ dur: 0.08, vol: 0.1, type: 'bandpass', f: 2800, q: 2, at: i * 0.13 }); } },
 
   // ----- monsters -----
   claw: (s) => { s.noise({ dur: 0.15, vol: 0.5, type: 'bandpass', f: 3500, f2: 900, q: 2 }); },

@@ -48,6 +48,7 @@ export class Ally {
     // pick the closest monster she can see
     if (this.thinkT <= 0) {
       this.thinkT = 0.25;
+      const had = this.target && !this.target.dead;
       this.target = null;
       let best = ALLY.range;
       for (const e of game.enemies) {
@@ -58,6 +59,12 @@ export class Ally {
         if (!hasLineOfSight(game.level, this.x, this.y + 1.5, this.z, e.x, e.y + e.height * 0.6, e.z)) continue;
         best = d; this.target = e;
       }
+      if (this.target && !had) {
+        if (this.target.def.boss && !this.sawBoss) { this.sawBoss = true; game.voice.say('boss', { force: true }); }
+        else game.voice.say('contact');
+      }
+      // warn the player when they're badly hurt
+      if (!p.dead && p.health < 30 && game.time > (this.hurtWarnT || 0)) { this.hurtWarnT = game.time + 20; game.voice.say('hurt', { force: true }); }
     }
 
     // shoot
@@ -69,7 +76,14 @@ export class Ally {
         this.flashT = 0.08;
         const t = this.target;
         game.audio.playAt('pistol', this.x, this.z, 0.55);
-        if (chance(ALLY.accuracy)) t.takeDamage(randInt(...ALLY.damage), this, { x: t.x, y: t.y + t.height * 0.6, z: t.z });
+        if (chance(0.15)) game.audio.playAt('vexHup', this.x, this.z, 0.9);
+        if (chance(ALLY.accuracy)) {
+          t.takeDamage(randInt(...ALLY.damage), this, { x: t.x, y: t.y + t.height * 0.6, z: t.z });
+          if (t.dead) {
+            if (chance(0.3)) game.audio.playAt('vexLaugh', this.x, this.z, 0.9);
+            game.voice.say('kill');
+          }
+        }
         else game.effects.bulletPuff(t.x + rand(-0.8, 0.8), t.y + rand(0.3, 1.8), t.z + rand(-0.8, 0.8));
         if (t.state === 'idle') t.wake(true);
       }
@@ -93,7 +107,7 @@ export class Ally {
       const stuck = Math.hypot(this.x - ox, this.z - oz) < s * 0.2;
       this.lostT = stuck || dist > 30 ? this.lostT + dt : 0;
     } else this.lostT = 0;
-    if (this.lostT > 2.5 || dist > 45) this.warpToPlayer();
+    if (this.lostT > 2.5 || dist > 45) { this.warpToPlayer(); game.voice.say('catchup'); }
 
     const floor = floorUnder(game.level, this.x, this.z, this.radius);
     this.y = this.y < floor ? floor : Math.max(floor, this.y - 9 * dt);

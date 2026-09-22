@@ -23,7 +23,7 @@ The game needs to live on a web address. GitHub Pages does this for free:
 
 > GitHub Pages is free for public repositories. If the repo is private, Pages needs a paid plan.
 
-Turn your phone sideways. If there's no sound, check the volume and tap the screen once.
+Turn your phone sideways. If there's no sound, turn the volume up and tap the screen once (sound works even with the silent switch on).
 
 ## Controls
 
@@ -46,6 +46,7 @@ Doors open automatically when you walk into them (can be turned off in Settings)
 - **5 weapons**: Rivet Pistol, Breacher Scattergun, Buzzsaw Repeater, Ion Lancer (plasma), Hellbore Launcher (rockets with splash damage).
 - **6 monsters**: Husk (clawing shambler), Rifter (armoured gunner), Bile Spitter (acid lobber),
   Maw Hound (fast charging beast), Cinder Wraith (floating fireball caster), and **The Warden** (boss).
+- **VEX**, a companion who follows you, shoots monsters and calls out in a (built-in text-to-speech) female voice. Toggle her and her voice in Settings.
 - Health, armour (two strengths), ammo, keycards (red / blue / yellow), secret areas,
   explosive toxic canisters, hazard floors, lifts, stairs, sky areas.
 - Title / difficulty / settings / pause / level complete / game over / victory screens.
@@ -82,6 +83,7 @@ src/
     WeaponSystem.js      Firing, switching, aim assist, drawing the gun
     weaponSprites.js     First-person gun art
     Projectiles.js       Plasma, rockets, fireballs, acid
+  allies/Ally.js         VEX the companion (following, targeting, callouts)
   enemies/
     enemyDefs.js         Monster stats
     Enemy.js             Monster AI (idle / chase / attack / pain / death)
@@ -93,6 +95,7 @@ src/
   effects/Effects.js     Blood, sparks, explosions, screen flashes, shake
   audio/Audio.js         Sound effects (synthesised)
   audio/Music.js         Music sequencer and songs
+  audio/Voice.js         VEX's spoken lines (built-in speech voice)
   ui/HUD.js              Health / armour / ammo display
   ui/Menus.js            All menu screens
   ui/Automap.js          Map overlay

@@ -37,6 +37,7 @@ export const DEFAULT_SETTINGS = {
   screenShake: true,
   headBob: true,
   allyCompanion: true,  // VEX, the friendly companion
+  allyVoice: true,      // VEX speaks callouts
 };
 
 export const IS_TOUCH = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;

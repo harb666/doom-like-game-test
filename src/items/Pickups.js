@@ -117,6 +117,7 @@ export class Pickups {
           if (it.def.counts && !it.dropped) game.stats.items++;
           game.hud.message(it.def.msg, it.type.startsWith('w_') || it.type.startsWith('key') || it.def.counts && it.def.glow);
           game.audio.play(it.def.sound);
+          if (game.ally && it.type.startsWith('w_')) setTimeout(() => game.voice.say('weapon'), 700);
           game.effects.pickupFlash();
         }
       }
