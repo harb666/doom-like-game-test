@@ -5,33 +5,26 @@ import * as THREE from 'three';
 import { rand } from '../util.js';
 
 let glowTex = null;
+/** Soft round glow used for flashes, fireballs, sparks and plasma. */
 export function glowTexture() {
   if (glowTex) return glowTex;
-  const cv = document.createElement('canvas'); cv.width = cv.height = 32;
+  const cv = document.createElement('canvas'); cv.width = cv.height = 64;
   const ctx = cv.getContext('2d');
-  // chunky pixel glow: concentric square-ish rings
-  for (let y = 0; y < 32; y++) for (let x = 0; x < 32; x++) {
-    const d = Math.hypot(x - 15.5, y - 15.5) / 16;
-    if (d > 1) continue;
-    const a = d < 0.3 ? 1 : d < 0.55 ? 0.75 : d < 0.8 ? 0.35 : 0.12;
-    const w = d < 0.3 ? 255 : 200;
-    ctx.fillStyle = `rgba(${w},${w},${w},${a})`;
-    ctx.fillRect(x, y, 1, 1);
-  }
+  const g = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+  g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(0.25, 'rgba(255,255,255,0.85)');
+  g.addColorStop(0.55, 'rgba(255,255,255,0.3)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, 64, 64);
   glowTex = new THREE.CanvasTexture(cv);
-  glowTex.magFilter = THREE.NearestFilter; glowTex.minFilter = THREE.NearestFilter; glowTex.generateMipmaps = false;
   return glowTex;
 }
 
 let blobTex = null;
 function blobTexture() {
   if (blobTex) return blobTex;
-  const cv = document.createElement('canvas'); cv.width = cv.height = 8;
+  const cv = document.createElement('canvas'); cv.width = cv.height = 16;
   const ctx = cv.getContext('2d');
-  ctx.fillStyle = '#fff';
-  ctx.fillRect(2, 0, 4, 8); ctx.fillRect(0, 2, 8, 4); ctx.fillRect(1, 1, 6, 6);
+  ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(8, 8, 7, 0, Math.PI * 2); ctx.fill();
   blobTex = new THREE.CanvasTexture(cv);
-  blobTex.magFilter = THREE.NearestFilter; blobTex.minFilter = THREE.NearestFilter; blobTex.generateMipmaps = false;
   return blobTex;
 }
 
@@ -151,6 +144,7 @@ export class Effects {
   }
 
   burst(x, y, z, color, n = 6) {
+    this.game.lights?.flash(x, y, z, color, 6, 5, 0.18);
     this.spawn(true, x, y, z, { life: 0.25, s0: 0.5, s1: 1.1, color });
     for (let i = 0; i < n; i++) this.spawn(true, x, y, z, { vx: rand(-3, 3), vy: rand(-1, 3), vz: rand(-3, 3), gravity: 4, life: rand(0.2, 0.4), s0: 0.2, s1: 0.05, color });
   }
@@ -168,10 +162,14 @@ export class Effects {
     const p = this.game.player;
     const d = Math.hypot(p.x - x, p.z - z);
     this.shake(Math.max(0, 0.35 - d * 0.03));
-    this.muzzleFlash(1.8);
+    this.game.lights?.flash(x, y + 0.5, z, 0xff8030, 45, radius * 3.5, 0.45);
   }
 
-  muzzleFlash(b = 1.4) { this.brightness = Math.max(this.brightness, b); this.game.level?.setBrightness(this.brightness); }
+  /** Player gunfire: a warm real-time light at the gun. */
+  muzzleFlash(b = 1.4) {
+    const p = this.game.player;
+    this.game.lights?.flash(p.x - Math.sin(p.yaw) * 0.7, p.eyeY - 0.1, p.z - Math.cos(p.yaw) * 0.7, 0xffc070, 7 * b, 9, 0.07);
+  }
 
   shake(amount) { this.shakeAmount = Math.min(0.4, Math.max(this.shakeAmount, amount)); }
 

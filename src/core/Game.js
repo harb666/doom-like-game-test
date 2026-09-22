@@ -23,8 +23,9 @@ import { Voice } from '../audio/Voice.js';
 import { HUD } from '../ui/HUD.js';
 import { Menus } from '../ui/Menus.js';
 import { Automap } from '../ui/Automap.js';
+import { DynamicLights } from '../gfx/DynamicLights.js';
 
-const QUALITY_SCALE = { low: 0.42, medium: 0.62, high: 1.0 };
+const QUALITY_SCALE = { low: 0.5, medium: 0.75, high: 1.0 };
 const KEY_NAMES = { red: 'RED', blue: 'BLUE', yellow: 'YELLOW' };
 
 export class Game {
@@ -37,10 +38,14 @@ export class Game {
     this.difficulty = DIFFICULTY.normal;
 
     // ---- renderer ----
-    this.renderer = new THREE.WebGLRenderer({ antialias: false, alpha: false, powerPreference: 'high-performance' });
+    this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
     this.renderer.setClearColor(0x000000);
     document.getElementById('view').appendChild(this.renderer.domElement);
     this.scene = new THREE.Scene();
+    // baked vertex lighting is multiplied by this; dynamic lights add on top
+    this.ambientLight = new THREE.AmbientLight(0xffffff, Math.PI);
+    this.scene.add(this.ambientLight);
+    this.lights = new DynamicLights(this.scene);
     this.camera = new THREE.PerspectiveCamera(70, 1, 0.05, 200);
     this.textures = new TextureLibrary(this.renderer);
     this.glowTex = glowTexture();
@@ -134,8 +139,8 @@ export class Game {
     this.frameTimes.length = 0;
     this.fps = Math.round(1 / avg);
     if (this.settings.quality !== 'auto' || this.state !== 'playing') return;
-    const max = IS_TOUCH ? 0.8 : 1.0;
-    if (this.fps < 42 && this.autoScale > 0.36) { this.autoScale = Math.max(0.36, this.autoScale - 0.08); this.resize(); }
+    const max = 1.0;
+    if (this.fps < 42 && this.autoScale > 0.45) { this.autoScale = Math.max(0.45, this.autoScale - 0.08); this.resize(); }
     else if (this.fps > 58 && this.autoScale < max) { this.autoScale = Math.min(max, this.autoScale + 0.04); this.resize(); }
   }
 
@@ -241,13 +246,14 @@ export class Game {
       this.level.dispose();
       this.level = null;
     }
-    for (const e of this.enemies) e.material.dispose();
-    if (this.ally) { this.ally.material.dispose(); this.ally = null; }
+    for (const e of this.enemies) e.model.dispose();
+    if (this.ally) { this.ally.model.dispose(); this.ally = null; }
     this.enemies = [];
     this.enemyGroup.clear();
     this.pickups.clear();
     this.projectiles.clear();
     this.effects.clear();
+    this.lights.clear();
     this.hud.clearMessages();
     this.automap.toggle(false);
   }
@@ -507,6 +513,7 @@ export class Game {
     for (const e of this.enemies) e.update(dt);
     if (this.ally) this.ally.update(dt);
     this.projectiles.update(dt);
+    this.lights.update(dt, this.player, this.projectiles.list);
     if (playing) this.weapons.update(dt, input); else this.weapons.update(dt, IDLE_INPUT);
     this.pickups.update(dt, this.time);
     this.effects.update(dt);
@@ -530,7 +537,8 @@ export class Game {
     this.player.applyCamera(this.camera, this.time);
     this.renderer.render(this.scene, this.camera);
     const cell = this.level.cellAt(this.player.x, this.player.z);
-    this.weapons.render(dt, (cell.light ?? 0.7) * this.effects.brightness);
+    const L = this.level.lightColor(cell, this.player.eyeY), b = this.effects.brightness;
+    this.weapons.render(dt, [Math.max(0.25, L[0]) * b, Math.max(0.25, L[1]) * b, Math.max(0.25, L[2]) * b], this.renderer);
     this.automap.draw();
   }
 }

@@ -209,10 +209,38 @@ const painters = {
 
 const SIZES = { sky: [256, 96] };
 
+/**
+ * Quake-style detail pass: smooth-upscale the 64px pixel art, then add relief
+ * shading (brighter/darker edges from the picture's own light and dark areas)
+ * and fine grain, so surfaces look gritty and solid instead of chunky.
+ */
+function enhance(src, scale, relief, seed) {
+  const W = src.width * scale, H = src.height * scale;
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d');
+  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+  // draw with wrap-around padding so tiles stay seamless
+  for (const ox of [-W, 0, W]) for (const oy of [-H, 0, H]) ctx.drawImage(src, ox, oy, W, H);
+  const img = ctx.getImageData(0, 0, W, H), d = img.data;
+  const lum = new Float32Array(W * H);
+  for (let i = 0; i < W * H; i++) lum[i] = (d[i * 4] * 0.3 + d[i * 4 + 1] * 0.59 + d[i * 4 + 2] * 0.11) / 255;
+  let s = seed >>> 0;
+  const rnd = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
+  const o = 2;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const i = y * W + x;
+    const a = lum[((y - o + H) % H) * W + ((x - o + W) % W)], b = lum[((y + o) % H) * W + ((x + o) % W)];
+    const k = 1 + (a - b) * relief + (rnd() - 0.5) * 0.09;
+    d[i * 4] = Math.min(255, d[i * 4] * k); d[i * 4 + 1] = Math.min(255, d[i * 4 + 1] * k); d[i * 4 + 2] = Math.min(255, d[i * 4 + 2] * k);
+  }
+  ctx.putImageData(img, 0, 0);
+  return cv;
+}
+
 export class TextureLibrary {
   constructor(renderer) {
     this.cache = new Map();
-    this.maxAniso = renderer ? Math.min(4, renderer.capabilities.getMaxAnisotropy()) : 1;
+    this.maxAniso = renderer ? Math.min(8, renderer.capabilities.getMaxAnisotropy()) : 1;
   }
   get(name) {
     if (this.cache.has(name)) return this.cache.get(name);
@@ -223,11 +251,12 @@ export class TextureLibrary {
     for (const ch of name) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0;
     const p = new PixelArt(w, h, seed);
     painter(p);
-    const tex = new THREE.CanvasTexture(p.toCanvas());
+    const hi = name === 'sky' ? enhance(p.toCanvas(), 3, 0, seed) : enhance(p.toCanvas(), 4, 1.6, seed);
+    const tex = new THREE.CanvasTexture(hi);
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-    tex.magFilter = THREE.NearestFilter;
-    tex.minFilter = THREE.NearestMipmapLinearFilter;
+    tex.magFilter = THREE.LinearFilter;
+    tex.minFilter = THREE.LinearMipmapLinearFilter;
     tex.anisotropy = this.maxAniso;
     this.cache.set(name, tex);
     return tex;

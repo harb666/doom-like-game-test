@@ -1,7 +1,8 @@
 // Pickups (health, armour, ammo, weapons, keycards) and props (explosive barrels, lamps).
 
 import * as THREE from 'three';
-import { getItemTexture } from './itemSprites.js';
+import { buildItem, buildBarrel, buildDecor } from '../models/items.js';
+import { buildWeaponModel } from '../models/weapons.js';
 import { PLAYER } from '../config.js';
 
 const PX = 0.035; // world metres per sprite pixel
@@ -22,6 +23,7 @@ export const ITEMS = {
   cellpack:   { msg: 'Picked up a cell pack.', sound: 'pickup', give: (g) => g.weapons.giveAmmo('cells', 100) },
   rocket:     { msg: 'Picked up a rocket.', sound: 'pickup', give: (g) => g.weapons.giveAmmo('rockets', 1) },
   rocketcrate:{ msg: 'Picked up a crate of rockets.', sound: 'pickup', give: (g) => g.weapons.giveAmmo('rockets', 5) },
+  w_machinegun: { msg: 'You got the HAVOC MACHINEGUN!', sound: 'weaponPickup', give: (g) => g.weapons.giveWeapon('machinegun', 50) },
   w_scattergun: { msg: 'You got the BREACHER SCATTERGUN!', sound: 'weaponPickup', give: (g) => g.weapons.giveWeapon('scattergun', 8) },
   w_repeater:   { msg: 'You got the BUZZSAW REPEATER!', sound: 'weaponPickup', give: (g) => g.weapons.giveWeapon('repeater', 40) },
   w_lancer:     { msg: 'You got the ION LANCER!', sound: 'weaponPickup', give: (g) => g.weapons.giveWeapon('lancer', 60) },
@@ -31,19 +33,12 @@ export const ITEMS = {
   key_yellow: { msg: 'Picked up the YELLOW keycard.', sound: 'keyPickup', glow: 0xffd030, give: (g) => g.giveKey('yellow') },
 };
 
-function makeSprite(texName, fog = true) {
-  const tex = getItemTexture(texName);
-  const mat = new THREE.SpriteMaterial({ map: tex, alphaTest: 0.5, fog });
-  const s = new THREE.Sprite(mat);
-  s.center.set(0.5, 0);
-  s.scale.set(tex.userData.w * PX, tex.userData.h * PX, 1);
-  return s;
+/** Light a 3D model with the level's baked light at its spot. */
+function lightModel(game, mats, x, y, z, min = 0.3) {
+  const L = game.level.lightColor(game.level.cellAt(x, z), y + 0.5), b = game.effects.brightness;
+  mats.setLight(Math.max(min, L[0]) * b, Math.max(min, L[1]) * b, Math.max(min, L[2]) * b);
 }
-
-function lightAt(game, x, z) {
-  const c = game.level.cellAt(x, z);
-  return Math.max(0.2, Math.pow(Math.min(1.2, c.light ?? 0.7), 1.8)) * game.effects.brightness;
-}
+const farAway = (game, x, z) => Math.hypot(game.player.x - x, game.player.z - z) > (game.levelDef?.fog?.far ?? 40) + 4;
 
 export class Pickups {
   constructor(game) {
@@ -62,13 +57,9 @@ export class Pickups {
   add(type, x, z, extra = {}) {
     const def = ITEMS[type];
     if (!def) throw new Error('Unknown item ' + type);
-    const sprite = makeSprite(type);
-    const it = { type, def, x, z, y: this.game.level.floorAt(x, z), sprite, phase: Math.random() * 6, taken: false, ...extra };
-    if (def.glow) {
-      const g = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.game.glowTex, color: def.glow, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, opacity: 0.5 }));
-      g.scale.setScalar(1.3);
-      it.glow = g; this.group.add(g);
-    }
+    const model = buildItem(type, (id, M) => buildWeaponModel(id, M));
+    const sprite = model.root;
+    const it = { type, def, x, z, y: this.game.level.floorAt(x, z), sprite, model, phase: Math.random() * 6, taken: false, ...extra };
     this.group.add(sprite);
     this.items.push(it);
     return it;
@@ -77,16 +68,19 @@ export class Pickups {
   spawnDrop(kind, x, z) { this.add(kind, x, z, { amount: kind === 'rivets' ? 6 : 12, dropped: true }); }
 
   addBarrel(x, z) {
-    const sprite = makeSprite('barrel');
+    const m = buildBarrel();
+    const sprite = m.root;
     const b = new Barrel(this.game, x, z, sprite);
+    b.mats = m.mats;
     this.group.add(sprite);
     this.barrels.push(b);
     return b;
   }
 
   addDecor(type, x, z) {
-    const sprite = makeSprite(type);
-    const d = { type, x, z, y: this.game.level.floorAt(x, z), sprite, radius: type === 'remains' ? 0 : 0.3, height: 2, solidBody: type !== 'remains', bright: type !== 'remains' };
+    const m = buildDecor(type);
+    const sprite = m.root;
+    const d = { type, x, z, y: this.game.level.floorAt(x, z), sprite, mats: m.mats, radius: type === 'remains' ? 0 : 0.3, height: 2, solidBody: type !== 'remains', bright: type !== 'remains' };
     sprite.position.set(x, d.y, z);
     this.group.add(sprite);
     if (d.bright) {
@@ -103,17 +97,18 @@ export class Pickups {
     for (const it of this.items) {
       if (it.taken) continue;
       it.y = game.level.floorAt(it.x, it.z);
-      const bob = Math.sin(time * 3 + it.phase) * 0.06 + 0.08;
-      it.sprite.position.set(it.x, it.y + bob, it.z);
-      const L = lightAt(game, it.x, it.z);
-      it.sprite.material.color.setScalar(it.def.glow ? Math.max(1, L) : L);
-      if (it.glow) { it.glow.position.set(it.x, it.y + 0.45 + bob, it.z); it.glow.material.opacity = 0.35 + Math.sin(time * 5 + it.phase) * 0.15; }
+      it.sprite.visible = !farAway(game, it.x, it.z);
+      if (it.sprite.visible) {
+        const bob = Math.sin(time * 3 + it.phase) * 0.08 + 0.12;
+        it.sprite.position.set(it.x, it.y + bob, it.z);
+        it.model.spin.rotation.y = time * 1.8 + it.phase;
+        lightModel(game, it.model.mats, it.x, it.y, it.z, it.def.glow ? 0.6 : 0.35);
+      }
       // touch to collect
       if (!p.dead && Math.abs(p.x - it.x) < 0.95 && Math.abs(p.z - it.z) < 0.95 && Math.abs(p.y - it.y) < 1.2) {
         if (it.def.give(game, it)) {
           it.taken = true;
           it.sprite.visible = false;
-          if (it.glow) it.glow.visible = false;
           if (it.def.counts && !it.dropped) game.stats.items++;
           game.hud.message(it.def.msg, it.type.startsWith('w_') || it.type.startsWith('key') || it.def.counts && it.def.glow);
           game.audio.play(it.def.sound);
@@ -124,7 +119,7 @@ export class Pickups {
     }
     for (const b of this.barrels) b.update(dt);
     for (const d of this.decor) {
-      d.sprite.material.color.setScalar(d.bright ? 1 : lightAt(game, d.x, d.z));
+      lightModel(game, d.mats, d.x, d.y, d.z, 0.3);
       if (d.glow) d.glow.material.opacity = 0.3 + Math.sin(time * 9 + d.x) * 0.05;
     }
   }
@@ -154,13 +149,12 @@ class Barrel {
     this.lastHit = source;
     if (this.health <= 0) {
       this.fuse = 0.12 + Math.random() * 0.1;
-      this.sprite.material.map = getItemTexture('barrel_hot');
+      this.mats.flash(true, 0xff6010);
     }
   }
   update(dt) {
     if (this.dead) return;
-    const L = lightAt(this.game, this.x, this.z);
-    this.sprite.material.color.setScalar(L);
+    lightModel(this.game, this.mats, this.x, this.y, this.z, 0.3);
     if (this.fuse >= 0) {
       this.fuse -= dt;
       if (this.fuse < 0) {

@@ -1,7 +1,7 @@
 // Owns the player's arsenal: ammo, switching, firing and drawing the gun on screen.
 
 import { WEAPONS, WEAPON_BY_ID, AMMO_TYPES } from './weaponDefs.js';
-import { getWeaponArt } from './weaponSprites.js';
+import { ViewModel } from './ViewModel.js';
 import { traceLine } from '../world/Collision.js';
 import { rand, randInt } from '../util.js';
 
@@ -13,14 +13,16 @@ export class WeaponSystem {
   constructor(game) {
     this.game = game;
     this.canvas = document.getElementById('weapon-canvas');
+    this.canvas.style.display = 'none';        // guns are 3D models now
     this.ctx = this.canvas.getContext('2d');
+    this.view = new ViewModel();
     this.resetForNewGame();
   }
 
   resetForNewGame() {
-    this.owned = new Set(['pistol']);
-    this.ammo = { rivets: 50, shells: 0, cells: 0, rockets: 0 };
-    this.current = 'pistol';
+    this.owned = new Set(['pistol', 'machinegun']);
+    this.ammo = { rivets: 100, shells: 0, cells: 0, rockets: 0 };
+    this.current = 'machinegun';
     this.resetState();
   }
 
@@ -34,6 +36,7 @@ export class WeaponSystem {
     this.animT = 0;
     this.shotsInBurst = 0;
     this.dryFired = false;
+    this.climb = 0;          // how far recoil has pushed the view up
   }
 
   snapshot() { return { owned: [...this.owned], ammo: { ...this.ammo }, current: this.current }; }
@@ -81,7 +84,7 @@ export class WeaponSystem {
   }
 
   selectBest() {
-    const order = ['lancer', 'repeater', 'scattergun', 'pistol', 'hellbore'];
+    const order = ['lancer', 'repeater', 'machinegun', 'scattergun', 'pistol', 'hellbore'];
     for (const id of order) if (this.owned.has(id) && this.hasAmmoFor(id)) { this.select(id); return; }
   }
 
@@ -112,6 +115,10 @@ export class WeaponSystem {
     }
 
     if (game.player.dead) return;
+    if (!input.fire) {
+      // recoil settles back down (Quake 2 machinegun style)
+      if (this.climb > 0) { const r = Math.min(this.climb, dt * 0.35); this.climb -= r; game.player.pitch -= r; }
+    }
     if (!input.fire) { this.shotsInBurst = 0; this.dryFired = false; return; }
     if (this.cooldown > 0) return;
     const def = this.def;
@@ -136,11 +143,17 @@ export class WeaponSystem {
     if (def.shake) game.effects.shake(def.shake);
     game.makeNoise(p.x, p.z);
     if (def.pump) setTimeout(() => game.audio.play('pump'), 330);
+    if (def.climb) {
+      const c = def.climb * (0.7 + Math.random() * 0.6);
+      p.pitch = Math.min(0.7, p.pitch + c); this.climb += c;
+      p.yaw += (Math.random() - 0.5) * def.climb * 0.6;
+    }
 
     if (def.kind === 'hitscan') {
       for (let i = 0; i < def.pellets; i++) {
         const accurate = def.firstShotAccurate && this.shotsInBurst === 1;
-        const spread = accurate ? 0 : def.spread;
+        let spread = accurate ? 0 : def.spread;
+        if (def.spreadGrow) spread = Math.min(def.maxSpread, spread + def.spreadGrow * this.shotsInBurst);
         const a = p.yaw + (Math.random() + Math.random() - 1) * spread;
         const vs = def.pellets > 1 ? (Math.random() - 0.5) * spread * 0.6 : 0;
         this.hitscan(a, vs, randInt(def.damage[0], def.damage[1]));
@@ -207,44 +220,25 @@ export class WeaponSystem {
     }
   }
 
-  // ---------- drawing the gun on screen ----------
-  resize() {
-    const W = window.innerWidth, H = window.innerHeight;
-    this.canvas.height = VIRTUAL_H;
-    this.canvas.width = Math.round(VIRTUAL_H * W / H);
-  }
+  // ---------- drawing the 3D gun ----------
+  resize() { this.view?.resize(window.innerWidth / window.innerHeight); }
 
-  render(dt, light) {
-    const ctx = this.ctx, cv = this.canvas;
-    ctx.clearRect(0, 0, cv.width, cv.height);
+  render(dt, light, renderer) {
     const game = this.game, p = game.player;
     if (p.dead && p.deathTime > 0.4) return;
-    const art = getWeaponArt(this.current);
     const def = this.def;
-    let img = art.frames.idle;
-    if (art.frames.alt) {
-      if (def.pump && this.animT > 0 && this.animT < 0.4) img = art.frames.alt;
-      else if (def.spin && this.animT > 0 && Math.floor(game.time * 30) % 2) img = art.frames.alt;
-      else if (!def.pump && !def.spin && this.flashT > 0) img = art.frames.alt;
-    }
     const bob = game.settings.headBob ? p.bobAmount : p.bobAmount * 0.4;
-    const bx = Math.cos(p.bobPhase) * 9 * bob;
-    const by = Math.abs(Math.sin(p.bobPhase)) * 7 * bob;
-    const sw = this.switchPhase === 'ready' ? 0 : (this.switchT / SWITCH_TIME) * 110;
-    const x = Math.round(cv.width / 2 - img.width / 2 + bx + 8);
-    const y = Math.round(cv.height - img.height + 6 + by + sw + this.kick * 0.5);
-    if (this.flashT > 0) {
-      const f = art.flash;
-      ctx.drawImage(f, Math.round(x + art.flashAt[0] - f.width / 2), Math.round(y + art.flashAt[1] - f.height / 2 - 4));
-    }
-    ctx.drawImage(img, x, y);
-    // darken the gun in dark rooms (sector lighting like the walls)
-    const dark = Math.max(0, Math.min(0.7, (1 - light) * 0.75)) * (this.flashT > 0 ? 0.3 : 1);
-    if (dark > 0.02) {
-      ctx.globalCompositeOperation = 'source-atop';
-      ctx.fillStyle = `rgba(0,0,0,${dark.toFixed(3)})`;
-      ctx.fillRect(x, y, img.width, img.height);
-      ctx.globalCompositeOperation = 'source-over';
-    }
+    const lower = this.switchPhase === 'ready' ? 0 : this.switchT / 0.16;
+    this.view.render(renderer, {
+      id: this.current,
+      bobX: Math.cos(p.bobPhase) * 0.012 * bob,
+      bobY: -Math.abs(Math.sin(p.bobPhase)) * 0.012 * bob,
+      lower: Math.min(1, lower),
+      kick: Math.min(1, this.kick / 20),
+      flash: this.flashT > 0,
+      pump: def.pump && this.animT > 0 && this.animT < 0.45 ? Math.sin((0.45 - this.animT) / 0.45 * Math.PI) : 0,
+      spinning: def.spin && game.input.fire && this.cooldown > -0.2,
+      light,
+    }, dt);
   }
 }

@@ -7,7 +7,7 @@
 
 import * as THREE from 'three';
 import { ENEMIES } from './enemyDefs.js';
-import { getEnemyFrames } from './enemySprites.js';
+import { buildCreature } from '../models/creatures.js';
 import { moveBody, floorUnder, hasLineOfSight } from '../world/Collision.js';
 import { rand, randInt, chance, wrapAngle } from '../util.js';
 
@@ -41,29 +41,31 @@ export class Enemy {
     this.facing = rand(0, Math.PI * 2);
     this.idleSoundT = rand(4, 12);
 
-    this.frames = getEnemyFrames(type, this.def.blood);
-    this.material = new THREE.SpriteMaterial({ map: this.frames.walk[0], alphaTest: 0.5, fog: true });
-    this.sprite = new THREE.Sprite(this.material);
-    this.sprite.center.set(0.5, 0);
-    this.setFrame(this.frames.walk[0]);
+    this.model = buildCreature(type);
+    this.sprite = this.model.root;      // the 3D object added to the scene
+    this.pose = 'idle'; this.poseT = 0; this.walkPhase = rand(0, 6);
     this.syncSprite();
   }
 
   get alive() { return !this.dead; }
 
-  setFrame(tex) {
-    if (this.material.map !== tex) { this.material.map = tex; }
-    const aspect = tex.userData.aspect || 1;
-    this.sprite.scale.set(this.height * aspect, this.height, 1);
-  }
+  setPose(p) { if (this.pose !== p) { this.pose = p; this.poseT = 0; } }
 
-  syncSprite() {
-    const bob = this.def.float && !this.dead ? Math.sin(this.animT * 2.5) * 0.12 + this.def.float : 0;
-    this.sprite.position.set(this.x, this.y + bob - (this.dead ? 0.02 : 0), this.z);
-    const cell = this.game.level.cellAt(this.x, this.z);
-    const light = Math.max(0.22, Math.pow(Math.min(1.2, cell.light ?? 0.7), 1.8)) * this.game.effects.brightness;
-    const f = this.flashT > 0 ? 2.2 : 1;
-    this.material.color.setRGB(light * f, light * (this.flashT > 0 ? 1.6 : 1), light * (this.flashT > 0 ? 1.6 : 1));
+  syncSprite(dt = 0) {
+    const game = this.game, root = this.model.root;
+    root.position.set(this.x, this.y, this.z);
+    const p = game.player;
+    const far = Math.hypot(p.x - this.x, p.z - this.z) > (game.levelDef?.fog?.far ?? 40) + 6;
+    root.visible = !far && !this.gibbed;
+    if (!root.visible) return;
+    root.rotation.y = this.facing;
+    this.poseT += dt;
+    this.model.update(this.dead ? 'dead' : this.pose, this.walkPhase, this.poseT, this.deathT);
+    const cell = game.level.cellAt(this.x, this.z);
+    const L = game.level.lightColor(cell, this.y + this.height * 0.6);
+    const b = game.effects.brightness;
+    this.model.mats.setLight(L[0] * b, L[1] * b, L[2] * b);
+    this.model.mats.flash(this.flashT > 0);
   }
 
   // ---------- damage ----------
@@ -77,7 +79,7 @@ export class Enemy {
     if (this.state === 'idle') this.wake(false);
     if (chance(this.def.painChance) && this.state !== 'pain') {
       this.state = 'pain'; this.stateT = 0.22;
-      this.setFrame(this.frames.pain);
+      this.setPose('pain');
       game.audio.playAt(this.def.sounds.pain, this.x, this.z);
     }
   }
@@ -87,7 +89,7 @@ export class Enemy {
     this.dead = true; this.state = 'dead'; this.deathT = 0;
     this.solidBody = false;
     game.audio.playAt(this.def.sounds.death, this.x, this.z);
-    if (overkill > 45 || this.health < -this.maxHealth * 0.6) game.effects.gib(this.x, this.y + this.height * 0.5, this.z);
+    if (overkill > 45 || this.health < -this.maxHealth * 0.6) { game.effects.gib(this.x, this.y + this.height * 0.5, this.z); if (!this.def.boss) this.gibbed = true; }
     game.onEnemyKilled(this);
     if (this.def.drop) game.pickups.spawnDrop(this.def.drop, this.x, this.z);
   }
@@ -107,10 +109,8 @@ export class Enemy {
 
     if (this.dead) {
       this.deathT += dt;
-      const i = Math.min(2, Math.floor(this.deathT / 0.12));
-      this.setFrame(this.frames.death[i]);
       this.y = floorUnder(game.level, this.x, this.z, 0.2);
-      this.syncSprite();
+      this.syncSprite(dt);
       return;
     }
 
@@ -127,7 +127,7 @@ export class Enemy {
           if (dist < 5 || ang < 1.4 || this.def.boss) this.wake(true);
         }
       }
-      this.setFrame(this.frames.walk[0]);
+      this.setPose('idle');
     } else if (this.state === 'pain') {
       this.stateT -= dt;
       if (this.stateT <= 0) this.state = 'chase';
@@ -147,7 +147,7 @@ export class Enemy {
     const floor = floorUnder(game.level, this.x, this.z, this.radius);
     if (this.y < floor) this.y = floor;
     else if (this.y > floor) this.y = Math.max(floor, this.y - 9 * dt);
-    this.syncSprite();
+    this.syncSprite(dt);
   }
 
   canSeePlayer() {
@@ -198,8 +198,8 @@ export class Enemy {
     const moved = Math.hypot(this.x - ox, this.z - oz);
     if ((mx || mz) && moved < speed * dt * 0.25 && this.stuckT <= 0) { this.stuckT = rand(0.3, 0.7); this.wanderAngle = rand(0, Math.PI * 2); }
     if (mx || mz) this.facing = Math.atan2(mx, mz);
-    const f = Math.floor(this.animT * (speed > 5 ? 8 : 4)) % 2;
-    this.setFrame(this.frames.walk[f]);
+    this.walkPhase += moved * (speed > 5 ? 2.6 : 3.4);
+    this.setPose(moved > 0.001 ? 'walk' : 'idle');
   }
 
   startAttack(kind) {
@@ -209,7 +209,7 @@ export class Enemy {
     this.stateT = a.windup * this.game.difficulty.reaction;
     this.fired = false;
     this.shotsLeft = a.shots || 1;
-    this.setFrame(this.frames.attack[0]);
+    this.setPose(kind === 'melee' ? 'windup' : 'aim');
     if (kind === 'melee' && this.def.melee.lunge) this.game.audio.playAt(this.def.sounds.sight, this.x, this.z, 0.6);
   }
 
@@ -224,7 +224,7 @@ export class Enemy {
     }
     if (this.stateT > 0) return;
     if (!this.fired || this.shotsLeft > 0) {
-      this.setFrame(this.frames.attack[1]);
+      this.setPose(this.attackKind === 'melee' ? 'strike' : 'fire');
       if (this.attackKind === 'melee') {
         this.fired = true; this.shotsLeft = 0;
         game.audio.playAt(def.sounds.attack, this.x, this.z);
@@ -243,12 +243,13 @@ export class Enemy {
       return;
     }
     this.state = 'chase';
-    this.setFrame(this.frames.walk[0]);
+    this.setPose('walk');
   }
 
   fireRanged(r, dx, dz, dist) {
     const game = this.game, p = game.player;
     game.audio.playAt(this.def.sounds.attack, this.x, this.z);
+    if (r.kind === 'hitscan') game.lights.flash(this.x, this.y + this.height * 0.6, this.z, 0xffb050, 8, 7, 0.08);
     if (r.kind === 'hitscan') {
       // chance to miss grows with distance and player speed
       const moving = Math.hypot(p.vx, p.vz);

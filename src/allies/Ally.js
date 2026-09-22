@@ -3,7 +3,7 @@
 // she walks through bodies and warps back to you if she gets left behind.
 
 import * as THREE from 'three';
-import { getEnemyFrames } from '../enemies/enemySprites.js';
+import { buildCreature } from '../models/creatures.js';
 import { moveBody, floorUnder, hasLineOfSight, cellBlocks } from '../world/Collision.js';
 import { rand, randInt, chance } from '../util.js';
 
@@ -27,16 +27,9 @@ export class Ally {
     this.target = null;
     this.thinkT = 0; this.fireT = 1; this.flashT = 0; this.animT = 0;
     this.lostT = 0;
-    this.frames = getEnemyFrames('ally');
-    this.material = new THREE.SpriteMaterial({ map: this.frames.walk[0], alphaTest: 0.5, fog: true });
-    this.sprite = new THREE.Sprite(this.material);
-    this.sprite.center.set(0.5, 0);
-    this.setFrame(this.frames.walk[0]);
-  }
-
-  setFrame(tex) {
-    this.material.map = tex;
-    this.sprite.scale.set(this.height * (tex.userData.aspect || 1), this.height, 1);
+    this.model = buildCreature('ally');
+    this.sprite = this.model.root;
+    this.facing = 0; this.walkPhase = 0;
   }
 
   update(dt) {
@@ -102,24 +95,31 @@ export class Ally {
       const l = Math.hypot(tx - this.x, tz - this.z) || 1;
       const s = ALLY.speed * (shooting ? 0.6 : 1) * dt;
       const ox = this.x, oz = this.z;
+      if (!shooting) this.facing = Math.atan2(tx - this.x, tz - this.z);
       const bumped = moveBody(game.level, this, (tx - this.x) / l * s, (tz - this.z) / l * s, []);
       if (bumped && bumped.door && !bumped.door.key && !bumped.door.secret) game.useDoor(bumped.door, false, this);
-      const stuck = Math.hypot(this.x - ox, this.z - oz) < s * 0.2;
+      const moved = Math.hypot(this.x - ox, this.z - oz);
+      this.walkPhase += moved * 3.6; this.moving = moved > 0.001;
+      const stuck = moved < s * 0.2;
       this.lostT = stuck || dist > 30 ? this.lostT + dt : 0;
-    } else this.lostT = 0;
+    } else { this.lostT = 0; this.moving = false; }
     if (this.lostT > 2.5 || dist > 45) { this.warpToPlayer(); game.voice.say('catchup'); }
 
     const floor = floorUnder(game.level, this.x, this.z, this.radius);
     this.y = this.y < floor ? floor : Math.max(floor, this.y - 9 * dt);
 
     // animation + lighting
-    if (this.flashT > 0) this.setFrame(this.frames.attack[1]);
-    else if (shooting) this.setFrame(this.frames.attack[0]);
-    else if (dist > ALLY.followDistance) this.setFrame(this.frames.walk[Math.floor(this.animT * 6) % 2]);
-    else this.setFrame(this.frames.walk[0]);
-    this.sprite.position.set(this.x, this.y, this.z);
-    const cell = game.level.cellAt(this.x, this.z);
-    this.material.color.setScalar(Math.max(0.3, Math.pow(Math.min(1.2, cell.light ?? 0.7), 1.8)) * game.effects.brightness);
+    if (shooting && this.target) this.facing = Math.atan2(this.target.x - this.x, this.target.z - this.z);
+    else if (!this.moving && dist < 6) this.facing = Math.atan2(dx, dz);
+    const pose = this.flashT > 0 ? 'fire' : shooting ? 'aim' : this.moving ? 'walk' : 'idle';
+    this.poseT = pose === this.pose ? (this.poseT || 0) + dt : 0; this.pose = pose;
+    const root = this.model.root;
+    root.position.set(this.x, this.y, this.z);
+    root.rotation.y = this.facing;
+    this.model.update(pose, pose === 'idle' ? this.animT : this.walkPhase, this.poseT, 0);
+    const L = game.level.lightColor(game.level.cellAt(this.x, this.z), this.y + 1.2);
+    const b = game.effects.brightness;
+    this.model.mats.setLight(Math.max(0.35, L[0]) * b, Math.max(0.35, L[1]) * b, Math.max(0.35, L[2]) * b);
   }
 
   /** Put her on a free square next to the player (behind them if possible). */

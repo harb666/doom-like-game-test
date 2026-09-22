@@ -31,6 +31,7 @@ export const THING_CODES = {
   K: { kind: 'item', type: 'rocketcrate' },
 
   // weapons
+  'M': { kind: 'item', type: 'w_machinegun' },
   '2': { kind: 'item', type: 'w_scattergun' },
   '3': { kind: 'item', type: 'w_repeater' },
   '4': { kind: 'item', type: 'w_lancer' },

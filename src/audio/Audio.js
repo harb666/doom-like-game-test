@@ -195,6 +195,7 @@ const rnd = (a, b) => a + Math.random() * (b - a);
 const SOUNDS = {
   // ----- weapons -----
   pistol: (s) => { s.noise({ dur: 0.14, vol: 0.9, type: 'bandpass', f: 2200, f2: 500, q: 0.8 }); s.tone({ type: 'square', f: 190, f2: 55, dur: 0.09, vol: 0.35 }); },
+  machinegun: (s) => { s.noise({ dur: 0.11, vol: 0.95, type: 'bandpass', f: rnd(1600, 2000), f2: 500, q: 0.8 }); s.tone({ type: 'sine', f: 130, f2: 45, dur: 0.1, vol: 0.55 }); s.noise({ dur: 0.03, vol: 0.35, type: 'highpass', f: 5000 }); },
   shotgun: (s) => { s.noise({ dur: 0.45, vol: 1.2, type: 'lowpass', f: 4000, f2: 250 }); s.tone({ type: 'sine', f: 110, f2: 38, dur: 0.3, vol: 0.9 }); s.noise({ dur: 0.08, vol: 0.6, type: 'highpass', f: 3000 }); },
   repeater: (s) => { s.noise({ dur: 0.08, vol: 0.7, type: 'bandpass', f: rnd(2400, 3000), f2: 800, q: 0.9 }); s.tone({ type: 'square', f: 240, f2: 80, dur: 0.05, vol: 0.28 }); },
   plasma: (s) => { s.tone({ type: 'sawtooth', f: 1400, f2: 260, dur: 0.16, vol: 0.28 }); s.tone({ type: 'square', f: 500, f2: 1600, dur: 0.07, vol: 0.12 }); },
