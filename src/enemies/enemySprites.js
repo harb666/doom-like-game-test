@@ -154,6 +154,41 @@ const PAINTERS = {
   } },
 };
 
+// Friendly companion (see src/allies/Ally.js) - uses the same frame system.
+PAINTERS.ally = { w: 40, h: 64, paint(p, pose) {
+  const cx = 20, skin = 0xd8a888, hair = 0x1e1614, hairHi = 0x3a2a24, jacket = 0x80868e, jacketDk = 0x5a5f66, leg = 0x16161a;
+  const lo = pose === 'walk1' ? 2 : pose === 'walk0' ? -2 : 0;
+  // hair falling behind the shoulders
+  p.poly([[cx - 6, 6], [cx - 2, 6], [cx - 5, 36], [cx - 11, 32]], hair);
+  p.poly([[cx + 3, 5], [cx + 7, 8], [cx + 10, 33], [cx + 5, 35]], hair);
+  p.line(cx - 7, 12, cx - 9, 30, hairHi); p.line(cx + 6, 12, cx + 8, 30, hairHi);
+  // legs: black leggings + light trainers
+  p.poly([[cx - 7, 39], [cx - 1, 39], [cx - 2 + lo, 60], [cx - 7 + lo, 60]], leg);
+  p.poly([[cx + 1, 39], [cx + 7, 39], [cx + 7 - lo, 60], [cx + 2 - lo, 60]], shadeColor(leg, 1.3));
+  p.rect(cx - 8 + lo, 59, 7, 4, 0xd0d0d4); p.rect(cx + 1 - lo, 59, 7, 4, 0xd0d0d4);
+  // fitted grey zip jacket over a black top
+  p.poly([[cx - 9, 21], [cx + 9, 21], [cx + 7, 41], [cx - 7, 41]], jacket);
+  p.poly([[cx - 3, 21], [cx + 3, 21], [cx, 29]], 0x0e0e10);
+  p.line(cx, 29, cx, 40, jacketDk);
+  p.rect(cx - 7, 34, 14, 1, jacketDk);
+  // neck (with a small rose tattoo) and face
+  p.rect(cx - 2, 16, 4, 6, skin); p.px(cx - 2, 19, 0x3a3a3a); p.px(cx - 1, 20, 0x3a3a3a);
+  p.blob(cx, 11, 5, 6, skin);
+  p.blob(cx, 7, 6, 3.5, hair); p.blob(cx + 1, 2, 3, 3, hair);
+  p.rect(cx - 3, 11, 2, 1, 0x101010); p.rect(cx + 1, 11, 2, 1, 0x101010);
+  p.px(cx - 2, 12, 0x6a8aa0); p.px(cx + 2, 12, 0x6a8aa0);
+  p.rect(cx - 1, 15, 3, 1, 0xa05a64);
+  // arms and sidearm
+  if (pose === 'attack0' || pose === 'attack1') {
+    p.line(cx - 8, 23, cx - 2, 27, jacket, 3); p.line(cx + 8, 23, cx + 2, 27, jacket, 3);
+    p.rect(cx - 2, 24, 4, 5, 0x26282c);
+    if (pose === 'attack1') { p.ellipse(cx, 23, 5, 4, 0xffc040); p.ellipse(cx, 23, 2, 2, 0xffffff); }
+  } else {
+    p.line(cx - 8, 23, cx - 10 + lo * 0.5, 38, jacket, 3); p.line(cx + 8, 23, cx + 10 - lo * 0.5, 38, jacket, 3);
+    p.rect(cx + 9 - lo * 0.5, 37, 3, 5, 0x26282c);
+  }
+} };
+
 // ---------- derived frames ----------
 function tint(src, color, amount) {
   const p = src.clone();

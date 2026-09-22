@@ -14,6 +14,7 @@ import { Player } from '../player/Player.js';
 import { WeaponSystem } from '../weapons/WeaponSystem.js';
 import { Projectiles } from '../weapons/Projectiles.js';
 import { Enemy } from '../enemies/Enemy.js';
+import { Ally, ALLY } from '../allies/Ally.js';
 import { FlowField } from '../enemies/FlowField.js';
 import { Pickups } from '../items/Pickups.js';
 import { Effects, glowTexture } from '../effects/Effects.js';
@@ -183,6 +184,7 @@ export class Game {
     this.beginPlay();
     this.hud.message(`${this.levelDef.name.toUpperCase()}`, true);
     if (this.levelDef.subtitle) this.hud.message(this.levelDef.subtitle);
+    if (this.ally) this.hud.message(`${ALLY.name} is fighting at your side.`);
   }
 
   restartLevel() {
@@ -224,6 +226,11 @@ export class Game {
       secrets: 0, secretsTotal: level.secretsTotal, time: 0,
     };
     this.flow.update(0, this.player.x, this.player.z, true);
+    this.ally = null;
+    if (this.settings.allyCompanion) {
+      this.ally = Ally.spawnNear(this);
+      this.enemyGroup.add(this.ally.sprite);
+    }
   }
 
   unloadLevel() {
@@ -233,6 +240,7 @@ export class Game {
       this.level = null;
     }
     for (const e of this.enemies) e.material.dispose();
+    if (this.ally) { this.ally.material.dispose(); this.ally = null; }
     this.enemies = [];
     this.enemyGroup.clear();
     this.pickups.clear();
@@ -492,6 +500,7 @@ export class Game {
     this.level.update(dt, this.time, this.camera.position, (c) => this.isOccupied(c));
     this.flow.update(dt, this.player.x, this.player.z);
     for (const e of this.enemies) e.update(dt);
+    if (this.ally) this.ally.update(dt);
     this.projectiles.update(dt);
     if (playing) this.weapons.update(dt, input); else this.weapons.update(dt, IDLE_INPUT);
     this.pickups.update(dt, this.time);

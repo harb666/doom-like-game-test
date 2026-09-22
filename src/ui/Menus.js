@@ -113,6 +113,7 @@ export class Menus {
         ${slider('musicVolume', 'MUSIC VOLUME', 0, 1, 0.05)}
         ${slider('sfxVolume', 'SOUND VOLUME', 0, 1, 0.05)}
         <div class="setting"><span>GRAPHICS</span><button class="toggle on" data-cycle="quality">${S.quality.toUpperCase()}</button></div>
+        ${toggle('allyCompanion', 'VEX COMPANION')}
         ${toggle('aimAssist', 'AIM ASSIST')}
         ${toggle('verticalLook', 'LOOK UP / DOWN')}
         ${toggle('invertY', 'INVERT LOOK')}

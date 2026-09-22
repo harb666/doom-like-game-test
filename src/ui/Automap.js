@@ -84,6 +84,11 @@ export class Automap {
       ctx.fillStyle = it.type === 'key_red' ? '#ff3030' : it.type === 'key_blue' ? '#3070ff' : '#ffd030';
       ctx.fillRect(ox + it.x / CELL * s - s * 0.25, oz + it.z / CELL * s - s * 0.25, s * 0.5, s * 0.5);
     }
+    // companion
+    if (g.ally) {
+      ctx.fillStyle = '#40e0ff';
+      ctx.fillRect(ox + g.ally.x / CELL * s - s * 0.2, oz + g.ally.z / CELL * s - s * 0.2, s * 0.4, s * 0.4);
+    }
     // player arrow
     const px = ox + p.x / CELL * s, pz = oz + p.z / CELL * s;
     const fx = -Math.sin(p.yaw), fz = -Math.cos(p.yaw);
