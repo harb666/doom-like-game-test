@@ -33,7 +33,7 @@ await touch('touchEnd', []);
 const s2 = await get();
 // pause button
 await page.waitForTimeout(100);
-await touch('touchStart', [[422, 390 - 31, 4]]); await touch('touchEnd', []);
+await touch('touchStart', [[34, 137, 4]]); await touch('touchEnd', []);
 await page.waitForTimeout(300);
 const s3 = await get();
 await page.screenshot({ path: `${OUT}/mobile-pause.png` });

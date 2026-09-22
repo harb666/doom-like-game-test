@@ -126,7 +126,7 @@ html, body {
 #btn-fire { width: 96px; height: 96px; right: calc(26px + var(--safe-r)); bottom: calc(26px + var(--safe-b)); font-size: 12px; }
 #btn-use { width: 62px; height: 62px; right: calc(136px + var(--safe-r)); bottom: calc(24px + var(--safe-b)); }
 #btn-weapon { width: 58px; height: 58px; right: calc(40px + var(--safe-r)); bottom: calc(134px + var(--safe-b)); }
-#btn-pause { width: 42px; height: 42px; left: 50%; margin-left: -21px; bottom: calc(10px + var(--safe-b)); border-radius: 8px; font-size: 11px; }
+#btn-pause { width: 44px; height: 38px; left: calc(12px + var(--safe-l)); top: calc(118px + var(--safe-t)); border-radius: 8px; font-size: 11px; }
 #btn-map { width: 48px; height: 36px; left: calc(12px + var(--safe-l)); top: 50%; margin-top: -18px; border-radius: 8px; font-size: 8px; }
 
 #rotate-hint {

@@ -307,6 +307,14 @@ export class Game {
 
   completeLevel() {
     if (this.state !== 'playing') return;
+    if (this.levelDef.exitRequiresBoss && this.enemies.some(e => e.def.boss && !e.dead)) {
+      if ((this.lockMsgT || 0) <= this.time) {
+        this.hud.message('The gate is sealed while the Warden lives!', true);
+        this.audio.play('locked');
+        this.lockMsgT = this.time + 2;
+      }
+      return;
+    }
     this.state = 'complete';
     this.input.enabled = false;
     this.input.unlock();

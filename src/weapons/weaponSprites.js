@@ -11,9 +11,14 @@ function trap(p, cx, yTop, yBot, wTop, wBot, c) {
 }
 
 function hand(p, x, y, r = 11, mirror = false) {
-  p.blob(x, y, r, r * 0.8, GLOVE);
-  for (let i = 0; i < 4; i++) p.blob(x - r * 0.6 + i * r * 0.4, y - r * 0.55, r * 0.26, r * 0.32, GLOVE_HI);
-  p.blob(x + (mirror ? r * 0.8 : -r * 0.8), y - r * 0.1, r * 0.35, r * 0.5, GLOVE_HI);
+  // armoured gauntlet: dark glove, knuckle row, riveted plate on the back of the hand
+  p.blob(x, y + r * 0.1, r, r * 0.85, GLOVE);
+  for (let i = 0; i < 4; i++) p.blob(x - r * 0.66 + i * r * 0.44, y - r * 0.62, r * 0.25, r * 0.3, GLOVE_HI);
+  p.poly([[x - r * 0.62, y - r * 0.3], [x + r * 0.62, y - r * 0.3], [x + r * 0.5, y + r * 0.55], [x - r * 0.5, y + r * 0.55]], 0x4a5a3a);
+  p.rect(x - r * 0.55, y - r * 0.3, r * 1.1, 1, 0x7a8a62);
+  p.px(x - r * 0.35, y + r * 0.1, 0xa0a890); p.px(x + r * 0.35, y + r * 0.1, 0xa0a890);
+  const tx = x + (mirror ? r * 0.85 : -r * 0.85);
+  p.blob(tx, y - r * 0.05, r * 0.3, r * 0.5, GLOVE_HI);
 }
 
 function sleeve(p, x, y, w, h) { p.bevel(x, y, w, h, SLEEVE, 1); p.rect(x + 2, y + 3, w - 4, 2, shadeColor(SLEEVE, 0.7)); }

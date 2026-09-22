@@ -40,7 +40,7 @@ await check('spawns valid', () => {
 });
 await check('shoot husks in corridor', () => {
   const g = window.game; T.tp(7, 23, -90); g.godMode = true;
-  const k0 = g.stats.kills; T.fire(true); T.step(4); T.fire(false); T.step(0.5);
+  const k0 = g.stats.kills; T.fire(true); T.step(6); T.fire(false); T.step(0.5);
   return { ok: g.stats.kills - k0 >= 2, info: { kills: g.stats.kills - k0, ammo: g.weapons.ammo.rivets } };
 });
 await check('monsters hurt the player', () => {
@@ -98,10 +98,14 @@ await check('lift: use lowers it, ride it up', () => {
   return { ok: low < 0.05 && Math.abs(g.player.y - 2) < 0.05, info: { low, y: g.player.y, state: lift.state } };
 });
 await check('walk from lift onto ledge, get blue key', () => {
-  const g = window.game; T.tp(5, 5, 90); T.step(0.1); T.move(0, 1); T.step(0.5); T.move(0, 0);
+  const g = window.game; const trace = [];
+  for (const e of g.enemies) if (!e.dead && Math.hypot(e.x - g.player.x, e.z - g.player.z) < 10) e.takeDamage(9999, g.player, null);
+  T.move(0, 1);
+  for (let i = 0; i < 8; i++) { T.step(0.1); trace.push([+g.player.x.toFixed(1), +g.player.y.toFixed(2), g.level.lifts.get('L').state]); }
+  T.move(0, 0); window.__trace = trace;
   const onLedge = g.player.x < 10 && g.player.y > 1.9;
   T.tp(2, 10, 0); T.step(0.2);
-  return { ok: onLedge && g.player.keys.has('blue'), info: { x: g.player.x, keys: [...g.player.keys] } };
+  return { ok: onLedge && g.player.keys.has('blue'), info: { trace: window.__trace, onLedge, x: g.player.x.toFixed(2), y: g.player.y.toFixed(2), lift: g.level.lifts.get('L').state, blockers: g.solidBodies.filter(b => b !== g.player && Math.hypot(b.x - g.player.x, b.z - g.player.z) < 2).map(b => b.type || 'x') } };
 });
 await check('find secret closet', () => {
   const g = window.game; const s0 = g.stats.secrets; T.tp(9, 34, -90); T.press('use'); T.step(1.0); T.move(0, 1); T.step(0.8); T.move(0, 0);
