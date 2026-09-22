@@ -5,7 +5,7 @@
 //        'aim' (ranged wind-up) | 'fire' (ranged shot) | 'pain' | 'dead'
 
 import * as THREE from 'three';
-import { MaterialSet, box, cyl, ball, cone, joint, put, paintedTexture, mergeStatic } from './common.js';
+import { MaterialSet, box, cyl, ball, cone, joint, put, paintedTexture, mergeStatic, capsule, smoothSphere, shade as shadeGeo } from './common.js';
 import { glowTexture } from '../effects/Effects.js';
 
 const PI = Math.PI;
@@ -21,28 +21,30 @@ function humanoid(M, c) {
   const body = joint(root, 0, legLen, 0);
   const P = { root, body, legLen, torsoH, torsoD };
   for (const [s, k] of [[-1, 'L'], [1, 'R']]) {
-    const hip = joint(body, s * torsoW * 0.26, 0, 0);
-    hip.add(box(legW, legLen * 0.52, legW * 1.1, c.legMat));
+    const hip = joint(body, s * torsoW * (c.hipSpread ?? 0.26), 0, 0);
+    hip.add(c.smooth ? capsule(legW * 0.55, legLen * 0.56, c.legMat) : box(legW, legLen * 0.52, legW * 1.1, c.legMat));
     const knee = joint(hip, 0, -legLen * 0.5, 0);
-    knee.add(box(legW * 0.88, legLen * 0.5 - footH, legW, c.shinMat || c.legMat));
+    knee.add(c.smooth ? capsule(legW * 0.45, legLen * 0.5 - footH * 0.5, c.shinMat || c.legMat) : box(legW * 0.88, legLen * 0.5 - footH, legW, c.shinMat || c.legMat));
     put(knee, box(legW * 1.05, footH, legW * 1.9, c.footMat), 0, -(legLen * 0.5 - footH), legW * 0.35);
     P['hip' + k] = hip; P['knee' + k] = knee;
   }
   const spine = joint(body, 0, 0, 0);
   spine.rotation.x = c.hunch || 0;
   P.spine = spine; P.hunch = c.hunch || 0;
-  P.torso = put(spine, box(torsoW, torsoH, torsoD, c.torsoMat, 'bottom'));
+  P.torso = c.torsoFn ? c.torsoFn(spine, torsoW, torsoH, torsoD) : put(spine, box(torsoW, torsoH, torsoD, c.torsoMat, 'bottom'));
   const neck = joint(spine, 0, torsoH, c.headForward || 0);
   P.neck = neck;
   const headMat = c.headMats || c.headMat;
-  P.head = put(neck, box(headS, headS * 1.15, headS * 1.05, headMat, 'bottom'), 0, headS * 0.08, 0);
+  P.head = c.headFn ? c.headFn(neck, headS) : put(neck, box(headS, headS * 1.15, headS * 1.05, headMat, 'bottom'), 0, headS * 0.08, 0);
   P.headSize = headS;
   for (const [s, k] of [[-1, 'L'], [1, 'R']]) {
     const sh = joint(spine, s * (torsoW / 2 + armW / 2), torsoH - armW * 0.4, 0);
-    sh.add(box(armW, armLen * 0.5, armW, c.armMat));
+    sh.add(c.smooth ? capsule(armW * 0.55, armLen * 0.52, c.armMat) : box(armW, armLen * 0.5, armW, c.armMat));
     const el = joint(sh, 0, -armLen * 0.48, 0);
-    el.add(box(armW * 0.9, armLen * 0.46, armW * 0.9, c.foreMat || c.armMat));
-    const hand = put(el, box(armW * 0.95, armW * 1.1, armW * 1.1, c.handMat || c.foreMat || c.armMat), 0, -armLen * 0.46, 0);
+    el.add(c.smooth ? capsule(armW * 0.47, armLen * 0.48, c.foreMat || c.armMat) : box(armW * 0.9, armLen * 0.46, armW * 0.9, c.foreMat || c.armMat));
+    const handMesh = c.smooth ? ball(armW * 0.55, c.handMat || c.foreMat || c.armMat, 1) : box(armW * 0.95, armW * 1.1, armW * 1.1, c.handMat || c.foreMat || c.armMat);
+    if (c.smooth) handMesh.scale.set(0.9, 1.3, 1);
+    const hand = put(el, handMesh, 0, -armLen * 0.46 - (c.smooth ? armW * 0.4 : 0), 0);
     P['sh' + k] = sh; P['el' + k] = el; P['hand' + k] = hand;
   }
   P.armLen = armLen; P.armW = armW;
@@ -96,45 +98,71 @@ function muzzle(parent, x, y, z, color = 0xffc040, size = 0.6) {
   return s;
 }
 
-// ---------------------------------------------------------------- VEX's face
-let vexFace = null;
-function vexFaceTexture() {
-  if (vexFace) return vexFace;
-  vexFace = paintedTexture(64, 72, (c, w, h) => {
-    c.fillStyle = '#e2b49a'; c.fillRect(0, 0, w, h);
-    // hairline (hair pulled tightly back)
-    c.fillStyle = '#1a1210'; c.fillRect(0, 0, w, 9);
-    c.beginPath(); c.moveTo(0, 9); c.quadraticCurveTo(32, 16, 64, 9); c.lineTo(64, 0); c.lineTo(0, 0); c.fill();
-    // contour / cheek shading
-    const g = c.createLinearGradient(0, 0, w, 0);
-    g.addColorStop(0, 'rgba(150,95,75,0.55)'); g.addColorStop(0.2, 'rgba(150,95,75,0)'); g.addColorStop(0.8, 'rgba(150,95,75,0)'); g.addColorStop(1, 'rgba(150,95,75,0.55)');
-    c.fillStyle = g; c.fillRect(0, 18, w, 54);
-    // brows: dark, sharply arched
-    c.strokeStyle = '#1f140e'; c.lineWidth = 3; c.lineCap = 'round';
-    c.beginPath(); c.moveTo(10, 27); c.quadraticCurveTo(18, 20, 27, 24); c.stroke();
-    c.beginPath(); c.moveTo(54, 27); c.quadraticCurveTo(46, 20, 37, 24); c.stroke();
-    // smoky eye shadow
-    c.fillStyle = 'rgba(80,45,35,0.6)';
-    c.beginPath(); c.ellipse(19, 31, 9, 5, 0, 0, PI * 2); c.fill();
-    c.beginPath(); c.ellipse(45, 31, 9, 5, 0, 0, PI * 2); c.fill();
-    // eyes: whites, blue-grey irises, heavy winged lashes
-    for (const [x, dir] of [[19, -1], [45, 1]]) {
-      c.fillStyle = '#f2ece6'; c.beginPath(); c.ellipse(x, 33, 6, 3, 0, 0, PI * 2); c.fill();
-      c.fillStyle = '#86a8bc'; c.beginPath(); c.arc(x, 33, 2.8, 0, PI * 2); c.fill();
-      c.fillStyle = '#101010'; c.beginPath(); c.arc(x, 33, 1.3, 0, PI * 2); c.fill();
-      c.strokeStyle = '#080404'; c.lineWidth = 2.2;
-      c.beginPath(); c.moveTo(x - 7, 32); c.quadraticCurveTo(x, 27.5, x + 7, 32); c.stroke();
-      c.beginPath(); c.moveTo(x + dir * 6, 31.5); c.lineTo(x + dir * 10, 28.5); c.stroke();
+// ---------------------------------------------------------------- VEX's head
+// One painted texture wraps the whole (rounded) head: face at the front,
+// sleek dark hair pulled back over the top and the back.
+let vexHead = null;
+function vexHeadTexture() {
+  if (vexHead) return vexHead;
+  vexHead = paintedTexture(512, 256, (c, W, H) => {
+    const FX = 128;                                   // front of the face on the sphere's UV map
+    const skin = c.createLinearGradient(0, 0, 0, H);
+    skin.addColorStop(0, '#e6b89e'); skin.addColorStop(1, '#d9a88c');
+    c.fillStyle = skin; c.fillRect(0, 0, W, H);
+    // soft contour under the cheekbones and along the jaw
+    for (const dx of [-44, 44]) {
+      const g = c.createRadialGradient(FX + dx, 165, 2, FX + dx, 165, 40);
+      g.addColorStop(0, 'rgba(160,100,80,0.45)'); g.addColorStop(1, 'rgba(160,100,80,0)');
+      c.fillStyle = g; c.fillRect(FX + dx - 45, 120, 90, 100);
     }
-    // nose
-    c.strokeStyle = 'rgba(160,105,85,0.8)'; c.lineWidth = 1.5;
-    c.beginPath(); c.moveTo(32, 34); c.lineTo(31, 44); c.lineTo(34, 46); c.stroke();
-    // full, glossy mauve lips
-    c.fillStyle = '#9c4c5c'; c.beginPath(); c.moveTo(23, 54); c.quadraticCurveTo(28, 49, 32, 51); c.quadraticCurveTo(36, 49, 41, 54); c.quadraticCurveTo(32, 56, 23, 54); c.fill();
-    c.fillStyle = '#b86878'; c.beginPath(); c.moveTo(23, 54); c.quadraticCurveTo(32, 62, 41, 54); c.quadraticCurveTo(32, 56, 23, 54); c.fill();
-    c.fillStyle = 'rgba(255,220,225,0.7)'; c.beginPath(); c.ellipse(32, 57, 3, 1.2, 0, 0, PI * 2); c.fill();
+    const blush = (x) => { const g = c.createRadialGradient(x, 150, 1, x, 150, 18); g.addColorStop(0, 'rgba(210,120,110,0.35)'); g.addColorStop(1, 'rgba(210,120,110,0)'); c.fillStyle = g; c.fillRect(x - 20, 130, 40, 40); };
+    blush(FX - 34); blush(FX + 34);
+    // slicked-back dark hair: covers the top, the sides above the ears and the whole back
+    c.fillStyle = '#1b1311';
+    c.beginPath();
+    c.moveTo(0, 0); c.lineTo(W, 0); c.lineTo(W, 205);
+    c.bezierCurveTo(400, 215, 300, 200, 256, 150);        // back hairline down to the nape
+    c.bezierCurveTo(230, 110, 200, 72, FX + 60, 70);      // side hairline around the temple
+    c.bezierCurveTo(FX + 30, 60, FX - 30, 60, FX - 60, 70); // forehead hairline
+    c.bezierCurveTo(56, 72, 26, 110, 0, 150);
+    c.closePath(); c.fill();
+    // glossy highlights combed back
+    c.strokeStyle = 'rgba(120,90,75,0.55)'; c.lineWidth = 2;
+    for (let i = -5; i <= 5; i++) { c.beginPath(); c.moveTo(FX + i * 14, 66); c.quadraticCurveTo(FX + i * 10 + 60, 20, 380 + i * 8, 10); c.stroke(); }
+    // brows: dark, sharply arched
+    c.strokeStyle = '#1f130d'; c.lineCap = 'round'; c.lineWidth = 5;
+    c.lineWidth = 7; c.beginPath(); c.moveTo(FX - 52, 100); c.quadraticCurveTo(FX - 36, 80, FX - 11, 92); c.stroke();
+    c.beginPath(); c.moveTo(FX + 52, 100); c.quadraticCurveTo(FX + 36, 80, FX + 11, 92); c.stroke();
+    // eyes: smoky shadow, whites, blue-grey irises, heavy lashes with a wing
+    for (const [x, dir] of [[FX - 29, -1], [FX + 29, 1]]) {
+      const sh = c.createRadialGradient(x, 112, 3, x, 112, 24);
+      sh.addColorStop(0, 'rgba(90,50,40,0.75)'); sh.addColorStop(1, 'rgba(90,50,40,0)');
+      c.fillStyle = sh; c.fillRect(x - 26, 92, 52, 36);
+      c.fillStyle = '#f3ede8'; c.beginPath(); c.ellipse(x, 115, 15, 7.5, 0, 0, Math.PI * 2); c.fill();
+      c.fillStyle = '#7fa3b8'; c.beginPath(); c.arc(x, 115, 6.8, 0, Math.PI * 2); c.fill();
+      c.beginPath(); c.arc(x, 115, 6.8, 0, Math.PI * 2); c.lineWidth = 1.5; c.strokeStyle = '#3a5060'; c.stroke();
+      c.fillStyle = '#0c0c0c'; c.beginPath(); c.arc(x, 115, 3, 0, Math.PI * 2); c.fill();
+      c.fillStyle = '#ffffff'; c.fillRect(x - 3, 111, 2.5, 2.5);
+      c.strokeStyle = '#070303'; c.lineWidth = 4.5;
+      c.beginPath(); c.moveTo(x - 16, 116); c.quadraticCurveTo(x, 103, x + 16, 114); c.stroke();
+      c.beginPath(); c.moveTo(x + dir * 15, 113); c.lineTo(x + dir * 25, 105); c.stroke();
+      c.lineWidth = 1.6;
+      for (let k = -12; k <= 12; k += 3) { c.beginPath(); c.moveTo(x + k, 108); c.lineTo(x + k * 1.25 + dir * 2, 100); c.stroke(); }
+      c.lineWidth = 1.5; c.beginPath(); c.moveTo(x - 13, 120); c.quadraticCurveTo(x, 125, x + 13, 120); c.stroke();
+    }
+    // nose: soft shading and nostrils
+    c.strokeStyle = 'rgba(165,105,85,0.7)'; c.lineWidth = 2;
+    c.beginPath(); c.moveTo(FX - 4, 112); c.quadraticCurveTo(FX - 7, 135, FX - 5, 142); c.stroke();
+    c.fillStyle = 'rgba(120,70,55,0.6)'; c.beginPath(); c.ellipse(FX - 5, 144, 2.5, 1.5, 0, 0, 7); c.fill(); c.beginPath(); c.ellipse(FX + 5, 144, 2.5, 1.5, 0, 0, 7); c.fill();
+    // full glossy mauve lips
+    c.fillStyle = '#9a4a5a';
+    c.beginPath(); c.moveTo(FX - 22, 162); c.quadraticCurveTo(FX - 10, 149, FX, 154); c.quadraticCurveTo(FX + 10, 149, FX + 22, 162); c.quadraticCurveTo(FX, 165, FX - 22, 162); c.fill();
+    c.fillStyle = '#b86676';
+    c.beginPath(); c.moveTo(FX - 22, 162); c.quadraticCurveTo(FX, 184, FX + 22, 162); c.quadraticCurveTo(FX, 166, FX - 22, 162); c.fill();
+    c.fillStyle = 'rgba(255,225,230,0.8)'; c.beginPath(); c.ellipse(FX, 170, 8, 2.5, 0, 0, 7); c.fill();
+    c.strokeStyle = 'rgba(90,30,40,0.85)'; c.lineWidth = 1.6; c.beginPath(); c.moveTo(FX - 21, 162); c.quadraticCurveTo(FX, 166, FX + 21, 162); c.stroke();
   });
-  return vexFace;
+  return vexHead;
 }
 
 // ---------------------------------------------------------------- builders
@@ -304,42 +332,162 @@ const BUILDERS = {
 
   ally() {
     const M = new MaterialSet();
-    const skin = M.make(0xe2b49a, { flat: false }), hair = M.make(0x1c1412), jacket = M.make(0x8a9098), top = M.make(0x0e0e10);
-    const legs = M.make(0x16161a), shoes = M.make(0xe0e0e4), gun = M.make(0x26282c), seam = M.make(0xc8ccd0, { map: null });
-    const face = M.make(0xffffff, { map: vexFaceTexture(), flat: false });
-    // head box faces: +x, -x, +y, -y, +z (front), -z
-    const headMats = [skin, skin, hair, skin, face, hair];
-    const P = humanoid(M, { height: 1.75, torsoW: 0.34, torsoD: 0.19, legW: 0.12, armW: 0.085, head: 0.2,
-      legMat: legs, torsoMat: jacket, headMats, armMat: jacket, footMat: shoes, handMat: skin, foreMat: jacket });
-    // open jacket over a black top, seams, raised collar, neck with a rose tattoo
-    put(P.torso, box(0.12, 0.32, 0.02, top, 'center'), 0, 0.36, 0.1);
-    for (const s of [-1, 1]) put(P.torso, box(0.13, 0.015, 0.02, seam, 'center'), s * 0.11, 0.42, 0.1, 0, 0, s * 0.35);
-    put(P.torso, box(0.2, 0.09, 0.2, jacket, 'center'), 0, 0.53, 0);
-    const neck = put(P.neck, cyl(0.05, 0.055, 0.1, skin, 8), 0, 0.02, 0);
-    put(P.neck, box(0.035, 0.035, 0.01, M.make(0x3a3a40, { map: null }), 'center'), -0.035, 0.0, 0.05);
-    // hair: sleek cap, high ponytail, long waves over one shoulder and down the back
-    const hs = P.headSize;
-    put(P.head, box(hs * 1.08, hs * 0.35, hs * 1.12, hair, 'center'), 0, hs * 1.08, -0.01);
-    const pony = joint(P.head, 0, hs * 1.25, -hs * 0.35);
-    put(pony, ball(0.055, hair, 1));
-    const tail = [];
-    let prev = pony;
-    for (let i = 0; i < 5; i++) {
-      const seg = joint(prev, 0, i === 0 ? 0 : -0.13, 0);
-      put(seg, box(0.1 - i * 0.008, 0.14, 0.07, hair));
-      seg.rotation.x = i === 0 ? -0.5 : 0.18;
-      tail.push(seg); prev = seg;
+    const skin = M.make(0xe2b49a, { flat: false, map: null }), hair = M.make(0x1c1412, { flat: false });
+    const jacket = M.make(0x8a9098, { flat: false }), top = M.make(0x0e0e10, { flat: false }), seam = M.make(0xc8ccd0, { map: null, flat: false });
+    const legs = M.make(0x17171b, { flat: false }), shoes = M.make(0xe4e4e8, { flat: false }), gun = M.make(0x26282c);
+    const headMat = M.make(0xffffff, { map: vexHeadTexture(), flat: false });
+    const P = humanoid(M, {
+      height: 1.74, smooth: true, torsoW: 0.3, torsoD: 0.19, legW: 0.12, armW: 0.075, head: 0.2, hipSpread: 0.3,
+      legMat: legs, armMat: jacket, foreMat: jacket, footMat: shoes, handMat: skin,
+      torsoFn(spine, W, Hh) {
+        const t = new THREE.Group(); spine.add(t);
+        put(t, cyl(0.135, 0.15, 0.13, legs, 14, 'bottom'), 0, -0.05, 0).scale.set(1, 1, 0.7);          // hips
+        put(t, cyl(0.155, 0.12, 0.2, jacket, 14, 'bottom'), 0, 0.06, 0).scale.set(1, 1, 0.66);          // waist
+        put(t, cyl(0.16, 0.155, 0.22, jacket, 14, 'bottom'), 0, 0.26, 0).scale.set(1, 1, 0.72);         // chest
+        put(t, box(0.075, 0.26, 0.02, top, 'center'), 0, 0.36, 0.105, -0.12, 0, 0);                    // open zip, black top
+        for (const s of [-1, 1]) put(t, box(0.12, 0.012, 0.012, seam, 'center'), s * 0.09, 0.4, 0.105, 0, 0, s * 0.35);
+        put(t, cyl(0.075, 0.09, 0.08, jacket, 12, 'bottom'), 0, 0.47, -0.01);                          // raised collar
+        for (const s of [-1, 1]) put(t, ball(0.07, jacket, 2), s * 0.15, 0.44, 0).scale.set(1, 0.8, 1); // shoulders
+        return t;
+      },
+      headFn(neck, hs) {
+        put(neck, cyl(0.045, 0.05, 0.11, skin, 10, 'bottom'), 0, -0.02, 0);
+        put(neck, box(0.03, 0.03, 0.006, M.make(0x35353a, { map: null }), 'center'), -0.03, 0.03, 0.043, 0, -0.5, 0);  // rose tattoo
+        const head = joint(neck, 0, 0.09, 0.01);
+        const skull = put(head, smoothSphere(0.1, headMat), 0, 0.1, 0);
+        skull.scale.set(0.88, 1.18, 1.0);
+        put(head, smoothSphere(0.05, skin, 12, 8), 0, 0.02, 0.035).scale.set(1.1, 0.9, 1.1);       // jaw / chin
+        // hair volume: a sleek cap over the top and a fuller shell over the back of the head
+        const cap = put(head, new THREE.Mesh(new THREE.SphereGeometry(0.106, 24, 10, 0, Math.PI * 2, 0, Math.PI * 0.3), hair), 0, 0.1, 0);
+        cap.scale.set(0.9, 1.2, 1.02);
+        const back = put(head, new THREE.Mesh(new THREE.SphereGeometry(0.109, 20, 14, Math.PI * 0.85, Math.PI * 1.3, 0, Math.PI * 0.72), hair), 0, 0.1, -0.004);
+        back.scale.set(0.92, 1.2, 1.03);
+        for (const m of [cap, back]) { shadeGeo(m.geometry); }
+        return head;
+      },
+    });
+    // hair: high ponytail cascading down the back, long waves over one shoulder
+    const hs = 0.2;
+    const pony = joint(P.head, 0, 0.21, -0.05);
+    put(pony, ball(0.045, hair, 2));
+    const tail = []; let prev = pony;
+    for (let i = 0; i < 7; i++) {
+      const seg = joint(prev, 0, i === 0 ? 0 : -0.09, 0);
+      put(seg, capsule(0.045 - i * 0.003, 0.12, hair)).scale.set(1.2, 1, 0.8);
+      seg.rotation.x = i === 0 ? 0.9 : -0.13; tail.push(seg); prev = seg;
     }
-    const front = joint(P.head, -hs * 0.45, hs * 0.9, hs * 0.1);
-    front.rotation.z = -0.12;
-    put(front, box(0.07, 0.62, 0.09, hair));
-    put(front, box(0.06, 0.35, 0.07, hair), 0.03, -0.55, 0.02, 0, 0, 0.15);
-    const pistol = put(P.handR, box(0.045, 0.07, 0.2, gun, 'center'), 0, -0.06, 0.06);
-    const fl = muzzle(pistol, 0, 0.01, 0.14, 0xffc040, 0.45);
+    // long wavy hair falling forward over her right shoulder
+    const lock = []; prev = joint(P.head, -0.085, 0.12, 0.0);
+    for (let i = 0; i < 7; i++) {
+      const seg = joint(prev, 0, i === 0 ? 0 : -0.075, 0);
+      put(seg, capsule(0.04 - i * 0.002, 0.12, hair)).scale.set(1.35, 1, 0.7);
+      seg.rotation.z = i === 0 ? -0.45 : (i === 1 ? 0.35 : (i % 2 ? 0.16 : -0.16));
+      seg.rotation.x = i === 1 ? -0.3 : 0.03;
+      lock.push(seg); prev = seg;
+    }
+    const pistol = put(P.handR, box(0.04, 0.065, 0.19, gun, 'center'), 0, -0.04, 0.07);
+    const fl = muzzle(pistol, 0, 0.01, 0.13, 0xffc040, 0.45);
+    void hs;
     return {
       M, P, kind: 'humanoid', ranged: true, flash: fl, thickness: 0.25,
-      extra(pose, t) { tail.forEach((s, i) => { s.rotation.x = (i === 0 ? -0.5 : 0.18) + Math.sin(t * 1.3 + i) * 0.05; }); },
+      extra(pose, t) {
+        tail.forEach((s, i) => { s.rotation.x = (i === 0 ? 0.9 : -0.13) + Math.sin(t * 1.4 + i * 0.7) * 0.05; s.rotation.z = Math.sin(t * 0.9 + i) * 0.05; });
+        lock.forEach((s, i) => { if (i > 1) s.rotation.z = (i % 2 ? 0.16 : -0.16) + Math.sin(t * 1.2 + i) * 0.04; });
+      },
     };
+  },
+
+  hellmaw() {
+    const M = new MaterialSet();
+    const hide = M.make(0x8a845c, { flat: false }), dark = M.make(0x5a4a34, { flat: false }), vein = M.make(0x7a2a20, { flat: false });
+    const bone = M.make(0xe8dcc0), gum = M.make(0x4a0a08, { glow: 0xff4010, glowIntensity: 0.55 });
+    const eye = M.make(0x103010, { glow: 0x60ff90, map: null });
+    const root = new THREE.Group();
+    const body = joint(root, 0, 1.7, 0);
+    const head = put(body, ball(0.72, hide, 2)); head.scale.set(1.1, 0.95, 1.05);
+    for (const [x, y, z, r] of [[-0.3, 0.55, 0.1, 0.22], [0.25, 0.6, -0.1, 0.25], [0, 0.5, 0.4, 0.18], [0.45, 0.3, -0.35, 0.2]]) put(body, ball(r, dark, 1), x, y, z);
+    for (const [x, y, z] of [[-0.4, 0.35, 0.45], [0.3, 0.45, 0.4], [0.55, 0.1, 0.35]]) put(body, ball(0.09, vein, 1), x, y, z).scale.set(1.8, 0.5, 1);
+    for (const [x, y] of [[-0.22, 0.22], [0.22, 0.22], [0, 0.34]]) put(body, ball(0.065, eye, 1), x, y, 0.64);
+    // mouth: glowing gums, two rows of teeth, a hinged lower jaw
+    const maw = put(body, ball(0.52, gum, 2), 0, -0.14, 0.42); maw.scale.set(1.25, 0.42, 0.55);
+    for (let i = 0; i < 13; i++) {
+      const a = (i / 12 - 0.5) * 2.3;
+      put(body, cone(0.035, 0.16, bone, 5), Math.sin(a) * 0.6, -0.03, 0.42 + Math.cos(a) * 0.38, Math.PI, 0, 0);
+    }
+    const jaw = joint(body, 0, -0.2, 0.05);
+    const chin = put(jaw, ball(0.55, hide, 2), 0, -0.12, 0.25); chin.scale.set(1.1, 0.42, 0.95);
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 11 - 0.5) * 2.2;
+      put(jaw, cone(0.032, 0.15, bone, 5), Math.sin(a) * 0.55, 0.02, 0.28 + Math.cos(a) * 0.36);
+    }
+    const fire = glowSprite(0xff6020, 0.9); fire.position.set(0, -0.12, 0.6); fire.visible = false; body.add(fire);
+    // dangling tentacles
+    const tents = [];
+    for (let k = 0; k < 4; k++) {
+      const a = (k / 4) * Math.PI * 2 + 0.4;
+      let prev = joint(body, Math.cos(a) * 0.35, -0.45, Math.sin(a) * 0.3 - 0.1);
+      const segs = [];
+      for (let i = 0; i < 3; i++) {
+        const seg = joint(prev, 0, i === 0 ? 0 : -0.32, 0);
+        put(seg, capsule(0.07 - i * 0.018, 0.36, i === 2 ? dark : hide));
+        segs.push(seg); prev = seg;
+      }
+      tents.push(segs);
+    }
+    return {
+      M, root, thickness: 1.0, ranged: true, float: true,
+      anim(pose, t) {
+        body.position.y = 1.7 + Math.sin(t * 0.9) * 0.12;
+        body.rotation.x = pose === 'pain' ? -0.35 : pose === 'strike' ? 0.3 : Math.sin(t * 0.5) * 0.05;
+        const open = pose === 'aim' ? 0.55 : pose === 'fire' ? 0.75 : pose === 'windup' ? 0.6 : pose === 'strike' ? 0.1 : 0.12 + Math.sin(t * 1.5) * 0.06;
+        jaw.rotation.x = open;
+        fire.visible = pose === 'aim' || pose === 'fire';
+        fire.scale.setScalar(pose === 'fire' ? 1.3 : 0.7 + Math.sin(t * 20) * 0.1);
+        tents.forEach((segs, k) => segs.forEach((s, i) => {
+          s.rotation.x = Math.sin(t * 1.6 + k + i * 0.8) * (0.25 + i * 0.1);
+          s.rotation.z = Math.cos(t * 1.3 + k * 2 + i) * (0.2 + i * 0.1);
+        }));
+      },
+      death(deathT) {
+        const k = Math.min(1, deathT / 0.6);
+        body.position.y = 1.7 - k * k * 1.1;
+        body.rotation.x = -k * 0.9; body.rotation.z = k * 0.4;
+        jaw.rotation.x = 0.9; fire.visible = false;
+      },
+    };
+  },
+
+  ravager() {
+    const M = new MaterialSet();
+    const hide = M.make(0xa9aca2, { flat: false }), sinew = M.make(0x6e7068, { flat: false }), flesh = M.make(0x8a2a24, { flat: false });
+    const bone = M.make(0xe8e0cc), gum = M.make(0x5a0c0a, { flat: false });
+    const P = humanoid(M, {
+      height: 2.3, smooth: true, hunch: 0.55, legW: 0.22, armW: 0.19, armLen: 1.1, torsoW: 0.7, torsoD: 0.42, head: 0.3,
+      legMat: hide, armMat: hide, foreMat: sinew, footMat: sinew, handMat: sinew, headForward: 0.14,
+      torsoFn(spine, W, Hh, D) {
+        const t = new THREE.Group(); spine.add(t);
+        put(t, ball(0.36, hide, 2), 0, 0.18, 0).scale.set(1, 0.9, 0.75);        // gut
+        put(t, ball(0.44, hide, 2), 0, 0.5, 0).scale.set(1.05, 0.8, 0.8);       // chest
+        for (const s of [-1, 1]) put(t, ball(0.24, hide, 2), s * 0.38, 0.68, 0);  // huge shoulders
+        for (let i = 0; i < 4; i++) put(t, capsule(0.025, 0.36, bone, 'center'), 0, 0.3 + i * 0.09, 0.3, 0, 0, Math.PI / 2);   // ribs
+        put(t, box(0.3, 0.3, 0.02, flesh, 'center'), 0, 0.42, 0.28);
+        return t;
+      },
+      headFn(neck, hs) {
+        const head = joint(neck, 0, 0.02, 0.05);
+        put(head, ball(0.2, hide, 2), 0, 0.2, -0.02).scale.set(1, 1.05, 1.1);
+        put(head, ball(0.16, gum, 2), 0, 0.06, 0.12).scale.set(1.1, 0.6, 1.0);
+        for (let i = 0; i < 7; i++) {
+          const x = (i - 3) * 0.045;
+          put(head, cone(0.018, 0.09, bone, 5), x, 0.12, 0.24 - Math.abs(i - 3) * 0.01, Math.PI, 0, 0);
+          put(head, cone(0.016, 0.08, bone, 5), x, -0.01, 0.23 - Math.abs(i - 3) * 0.01);
+        }
+        for (const s of [-1, 1]) put(head, ball(0.03, M.make(0x200000, { glow: 0xff2010, map: null }), 1), s * 0.07, 0.27, 0.17);
+        return head;
+      },
+    });
+    for (const h of [P.handL, P.handR]) for (let i = -1; i <= 1; i++) put(h, cone(0.03, 0.22, bone, 5), i * 0.05, -0.2, 0.04, Math.PI + 0.2, 0, 0);
+    return { M, P, kind: 'humanoid', thickness: 0.6 };
   },
 };
 
@@ -353,7 +501,7 @@ export function buildCreature(type) {
   return {
     root, mats: m.M, float: !!m.float,
     update(pose, t, poseT, deathT) {
-      if (pose === 'dead') { animDeath(inner, deathT, m.thickness); if (m.flash) m.flash.visible = false; return; }
+      if (pose === 'dead') { if (m.death) m.death(deathT); else animDeath(inner, deathT, m.thickness); if (m.flash) m.flash.visible = false; return; }
       inner.rotation.x = 0; inner.position.y = 0;
       if (m.P) animHumanoid(m.P, pose, t, poseT);
       if (m.anim) m.anim(pose, t, poseT);

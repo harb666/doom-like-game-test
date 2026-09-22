@@ -57,5 +57,6 @@ export const PROJECTILES = {
   rocket:  { speed: 24, radius: 0.22, color: 0xffa040, size: 0.6, trail: true, lightColor: 0xff9040, lightIntensity: 10, impact: 'explosion', splash: { radius: 4.5, damage: 110 } },
   acid:    { speed: 13, radius: 0.25, color: 0x8aff40, size: 0.7, lightColor: 0x60ff30, lightIntensity: 6, impact: 'acid' },
   ember:   { speed: 16, radius: 0.25, color: 0xff7020, size: 0.8, trail: true, lightColor: 0xff7020, lightIntensity: 9, impact: 'ember' },
+  mawfire: { speed: 15, radius: 0.35, color: 0xff5a18, size: 1.3, trail: true, lightColor: 0xff5a18, lightIntensity: 12, impact: 'ember' },
   hellfire:{ speed: 17, radius: 0.35, color: 0xff3010, size: 1.1, trail: true, lightColor: 0xff4010, lightIntensity: 12, impact: 'explosion', splash: { radius: 3.5, damage: 60 } },
 };

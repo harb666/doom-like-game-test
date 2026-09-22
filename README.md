@@ -47,8 +47,10 @@ Doors open automatically when you walk into them (can be turned off in Settings)
 - **3 levels**: *Intake Station* (tutorial-paced base with a lift, slime pit, outdoor arena),
   *The Foundry* (huge open lava hall with catwalks), *The Maw Gate* (boss arena).
 - **6 weapons**: Rivet Pistol, Havoc Machinegun (Quake-style, recoil climbs as you fire), Breacher Scattergun, Buzzsaw Repeater, Ion Lancer (plasma), Hellbore Launcher (rockets with splash damage).
-- **6 monsters**: Husk (clawing shambler), Rifter (armoured gunner), Bile Spitter (acid lobber),
-  Maw Hound (fast charging beast), Cinder Wraith (floating fireball caster), and **The Warden** (boss).
+- **8 monsters**: Husk (clawing shambler), Rifter (armoured gunner), Bile Spitter (acid lobber),
+  Maw Hound (fast charging beast), Cinder Wraith (floating fireball caster), Hellmaw (floating fanged
+  head with tentacles that spits fireballs), Ravager (hulking pale brute that charges and claws),
+  and **The Warden** (boss).
 - **VEX**, a companion who follows you, shoots monsters and calls out in a (built-in text-to-speech) female voice. Toggle her and her voice in Settings.
 - Health, armour (two strengths), ammo, keycards (red / blue / yellow), secret areas,
   explosive toxic canisters, hazard floors, lifts, stairs, sky areas.

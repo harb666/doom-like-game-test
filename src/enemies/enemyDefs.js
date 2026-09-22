@@ -42,6 +42,21 @@ export const ENEMIES = {
     sounds: { sight: 'wraithSight', pain: 'wraithPain', death: 'wraithDeath', idle: 'wraithIdle', attack: 'fireball' },
     drop: 'cells', blood: 0x3a2040,
   },
+  hellmaw: {
+    name: 'Hellmaw', health: 320, speed: 3.0, radius: 0.85, height: 2.6,
+    painChance: 0.4, reaction: 0.55, sightRange: 46, score: 400, float: 1,
+    melee: { range: 2.4, damage: [12, 20], windup: 0.4, cooldown: 1.0 },
+    ranged: { kind: 'projectile', projectile: 'mawfire', damage: [20, 32], range: 46, windup: 0.55, cooldown: [1.3, 2.5] },
+    sounds: { sight: 'hellmawSight', pain: 'hellmawPain', death: 'hellmawDeath', idle: 'hellmawIdle', attack: 'fireball' },
+    drop: null, blood: 0x6a1a10,
+  },
+  ravager: {
+    name: 'Ravager', health: 280, speed: 5.4, radius: 0.7, height: 2.3,
+    painChance: 0.3, reaction: 0.45, sightRange: 40, score: 350,
+    melee: { range: 2.4, damage: [18, 30], windup: 0.35, cooldown: 0.9, lunge: true },
+    sounds: { sight: 'ravagerSight', pain: 'ravagerPain', death: 'ravagerDeath', idle: 'ravagerIdle', attack: 'claw' },
+    drop: null, blood: 0x8a0808,
+  },
   warden: {
     name: 'The Warden', health: 1600, speed: 2.4, radius: 1.1, height: 3.6,
     painChance: 0.06, reaction: 0.3, sightRange: 60, score: 5000, boss: true,

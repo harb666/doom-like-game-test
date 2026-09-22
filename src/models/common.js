@@ -111,6 +111,20 @@ export function ball(r, mat, detail = 1) {
 export function cone(r, h, mat, seg = 6) {
   return new THREE.Mesh(cached(`k${r},${h},${seg}`, () => new THREE.ConeGeometry(r, h, seg)), mat);
 }
+/** A rounded limb (capsule) hanging down from its top end, total length `len`. */
+export function capsule(r, len, mat, anchor = 'top', seg = 8) {
+  const g = cached(`p${r},${len},${anchor},${seg}`, () => {
+    const geo = new THREE.CapsuleGeometry(r, Math.max(0.001, len - 2 * r), 3, seg);
+    if (anchor === 'top') geo.translate(0, -len / 2, 0);
+    else if (anchor === 'bottom') geo.translate(0, len / 2, 0);
+    return geo;
+  });
+  return new THREE.Mesh(g, mat);
+}
+/** A smooth sphere with proper texture coordinates (for painted heads). */
+export function smoothSphere(r, mat, w = 24, h = 18) {
+  return new THREE.Mesh(cached(`q${r},${w},${h}`, () => new THREE.SphereGeometry(r, w, h)), mat);
+}
 export function torus(r, tube, mat) {
   return new THREE.Mesh(cached(`t${r},${tube}`, () => new THREE.TorusGeometry(r, tube, 6, 14)), mat);
 }

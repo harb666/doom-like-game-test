@@ -11,6 +11,8 @@ export const THING_CODES = {
   g: { kind: 'enemy', type: 'hound' },
   w: { kind: 'enemy', type: 'wraith' },
   W: { kind: 'enemy', type: 'warden' },
+  f: { kind: 'enemy', type: 'hellmaw' },
+  z: { kind: 'enemy', type: 'ravager' },
 
   // health & armour
   '+': { kind: 'item', type: 'medpatch' },
