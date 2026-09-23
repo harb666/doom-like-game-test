@@ -47,6 +47,14 @@ export async function preloadModels(names, onProgress) {
     try {
       const res = await fetch(new URL(`../../assets/models/${name}.bin`, import.meta.url));
       if (res.ok) loaded.set(name, parse(await res.arrayBuffer()));
+      else {
+        // hosts that can't serve .bin files get a base64 JSON copy instead
+        const alt = await fetch(new URL(`../../assets/models/${name}.json`, import.meta.url));
+        if (alt.ok) {
+          const bytes = Uint8Array.from(atob((await alt.json()).data), c => c.charCodeAt(0));
+          loaded.set(name, parse(bytes.buffer));
+        }
+      }
     } catch (e) { console.warn('model', name, e); }
     onProgress?.(++done / names.length);
   }));
