@@ -17,6 +17,7 @@ import { Enemy } from '../enemies/Enemy.js';
 import { Ally, ALLY } from '../allies/Ally.js';
 import { FlowField } from '../enemies/FlowField.js';
 import { Pickups } from '../items/Pickups.js';
+import { Props } from '../world/Props.js';
 import { Effects, glowTexture } from '../effects/Effects.js';
 import { AudioSystem } from '../audio/Audio.js';
 import { Voice } from '../audio/Voice.js';
@@ -64,11 +65,12 @@ export class Game {
     this.weapons = new WeaponSystem(this);
     this.projectiles = new Projectiles(this);
     this.pickups = new Pickups(this);
+    this.props = new Props(this);
     this.hud = new HUD(this);
     this.menus = new Menus(this);
     this.automap = new Automap(this);
     this.enemyGroup = new THREE.Group();
-    this.scene.add(this.effects.group, this.projectiles.group, this.pickups.group, this.enemyGroup);
+    this.scene.add(this.effects.group, this.projectiles.group, this.pickups.group, this.props.group, this.enemyGroup);
 
     this.enemies = [];
     this.solidBodies = [];
@@ -213,6 +215,7 @@ export class Game {
     const level = new Level(def);
     this.level = level;
     this.scene.add(level.build(this.textures));
+    this.props.build(def, level);
     const fog = def.fog || { color: 0x000000, near: 4, far: 36 };
     this.scene.fog = new THREE.Fog(fog.color, fog.near, fog.far);
     this.scene.background = new THREE.Color(fog.color);
@@ -255,6 +258,7 @@ export class Game {
     this.enemies = [];
     this.enemyGroup.clear();
     this.pickups.clear();
+    this.props.clear();
     this.projectiles.clear();
     this.effects.clear();
     this.lights.clear();
@@ -509,6 +513,7 @@ export class Game {
     for (const e of this.enemies) if (!e.dead) { this.solidBodies.push(e); this._shootables.push(e); }
     for (const b of this.pickups.barrels) if (!b.dead) { this.solidBodies.push(b); this._shootables.push(b); this._enemyTargets.push(b); }
     for (const d of this.pickups.decor) if (d.solidBody) this.solidBodies.push(d);
+    for (const c of this.props.colliders) this.solidBodies.push(c);
 
     this.player.update(dt, playing ? input : IDLE_INPUT);
     this.checkLiftWalkOn(dt);
@@ -520,6 +525,7 @@ export class Game {
     this.lights.update(dt, this.player, this.projectiles.list);
     if (playing) this.weapons.update(dt, input); else this.weapons.update(dt, IDLE_INPUT);
     this.pickups.update(dt, this.time);
+    this.props.update(dt);
     this.effects.update(dt);
     this.automap.reveal(dt);
     this.cullHidden(dt);

@@ -96,6 +96,8 @@ src/
   items/
     Pickups.js           Health, armour, ammo, weapons, keys, barrels, lamps
   effects/Effects.js     Blood, sparks, explosions, screen flashes, shake
+  world/Props.js         Furniture placed freely in a level (merged, lit, with collision)
+  models/furniture.js    Desks, chairs, screens, plants... and the fake CCTV feeds
   gfx/Lighting.js        Baked coloured lighting with shadows (Quake-style lightmaps)
   gfx/DynamicLights.js   Real-time lights from muzzle flashes, rockets, fireballs
   models/common.js       Helpers for building simple 3D models (items, guns)

@@ -31,6 +31,8 @@ export class LightBaker {
       if (c.floorTex === 'lava' && (c.cx + c.cz) % 2 === 0) this.add(x, c.floor + 0.7, z, [1, 0.42, 0.1], 1.4, 7.5);
       if (c.lamp) this.add(x, c.floor + (c.lamp.y ?? 2), z, c.lamp.color, c.lamp.i ?? 1, c.lamp.r ?? 7);
     }
+    // extra light fittings listed by the level (x, y, z in metres)
+    for (const l of L.def.lights || []) this.add(l.x, l.y, l.z, l.color || [1, 0.92, 0.8], l.i ?? 1, l.r ?? 8);
     for (const t of L.things) {
       if (t.kind !== 'decor') continue;
       const f = L.floorAt(t.x, t.z);

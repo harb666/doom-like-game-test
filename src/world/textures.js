@@ -97,6 +97,70 @@ const painters = {
   door_red(p) { painters.door(p, 0xd02020); },
   door_blue(p) { painters.door(p, 0x2060e0); },
   door_yellow(p) { painters.door(p, 0xe0c020); },
+
+  // ---- the lobby at the start of level 1 (modelled on a real room from a video)
+  plaster(p) {                 // painted grey-green wall with a dark skirting board
+    p.fill(0xa4a99e); p.noise(0.035);
+    for (let i = 0; i < 20; i++) p.ellipse(p.rng() * 64, p.rng() * 64, 4 + p.rng() * 8, 4 + p.rng() * 8, mixColor(0xa6aba0, 0xa0a59a, p.rng()));
+  },
+  plaster_white(p) {
+    p.fill(0xd6d8d2); p.noise(0.03);
+  },
+  cork(p) {                    // pressed cork / wood-chip feature wall
+    p.fill(0xb49a6a);
+    for (let i = 0; i < 260; i++) p.blob(p.rng() * 64, p.rng() * 64, 0.6 + p.rng() * 1.8, 0.5 + p.rng() * 1.2, mixColor(0xcab07a, 0x8a7048, p.rng()), 0);
+    p.speckle(90, 0x6a5434); p.speckle(60, 0xdcc696);
+    p.noise(0.08);
+  },
+  glass(p) {                   // floor-to-ceiling glass front with black frames, night outside
+    for (let y = 0; y < 64; y++) p.rect(0, y, 64, 1, mixColor(0x0c1218, 0x26303a, y / 64));
+    for (let i = 0; i < 4; i++) { const x = p.rng() * 64; p.ellipse(x, 30 + p.rng() * 20, 5 + p.rng() * 4, 6 + p.rng() * 4, 0x121a16); }  // trees outside
+    for (let i = 0; i < 6; i++) { const x = p.rng() * 64, y = 26 + p.rng() * 24; p.ellipse(x, y, 1.4, 1.4, 0xffe0a0); p.px(x, y - 1, 0xfff4d0); }
+    for (let i = 0; i < 2; i++) p.ellipse(p.rng() * 64, 44 + p.rng() * 6, 1, 1, 0x40ff80);
+    p.noise(0.04);
+    for (let i = 0; i < 4; i++) { const x = 6 + p.rng() * 44; p.line(x, 0, x + 12, 64, 0x3a4a56); p.line(x + 2, 0, x + 14, 64, 0x2e3a44); }  // reflections
+    p.rect(0, 0, 3, 64, 0x0c0c0e); p.rect(61, 0, 3, 64, 0x0c0c0e); p.rect(31, 0, 2, 64, 0x0c0c0e);
+    p.rect(0, 62, 64, 2, 0x0c0c0e);
+  },
+  door_wood(p) {               // plain wooden office door in a dark frame
+    p.fill(0x2a2a2a);
+    p.rect(3, 2, 58, 62, 0xb08654);
+    for (let x = 3; x < 61; x++) if (p.rng() < 0.35) p.rect(x, 2, 1, 62, mixColor(0xb8905c, 0x9a7446, p.rng()));
+    p.noise(0.05);
+    p.rect(47, 30, 8, 2, 0xb8bcc0); p.rect(47, 32, 2, 3, 0x7a7e82);
+    p.ellipse(51, 24, 1.5, 1.5, 0x2a2a2a);
+    p.rect(3, 2, 58, 1, 0xd0a870);
+  },
+  floor_lobby(p) {             // glossy pale lilac resin floor
+    p.fill(0xc6bec6); p.noise(0.025);
+    for (let i = 0; i < 12; i++) p.ellipse(p.rng() * 64, p.rng() * 64, 6 + p.rng() * 10, 4 + p.rng() * 8, mixColor(0xc9c1c9, 0xc2bac2, p.rng()));
+    p.speckle(30, 0xd6d0d6);
+  },
+  carpet(p) {                  // dark grey-green carpet tiles with a woven fleck
+    p.fill(0x505852);
+    for (let y = 0; y < 64; y++) for (let x = 0; x < 64; x++) {
+      const r = p.rng();
+      if (r < 0.22) p.px(x, y, 0x7a847c); else if (r < 0.4) p.px(x, y, 0x3c423e);
+    }
+    for (let i = 0; i < 40; i++) { const x = p.rng() * 64, y = p.rng() * 64; p.line(x, y, x + 3, y, 0x9aa49a); }
+    p.rect(0, 0, 64, 1, 0x3a403c); p.rect(0, 32, 64, 1, 0x3a403c); p.rect(0, 0, 1, 64, 0x3a403c); p.rect(32, 0, 1, 64, 0x3a403c);
+  },
+  floor_mat(p) {               // ribbed entrance matting
+    p.fill(0x2a2c2e);
+    for (let y = 0; y < 64; y += 4) { p.rect(0, y, 64, 2, 0x4a4c50); p.rect(0, y + 2, 64, 1, 0x1a1a1c); }
+    p.noise(0.1);
+  },
+  ceil_exposed(p) {            // open ceiling painted dark, with services running through
+    p.fill(0x26282a); p.noise(0.08);
+    p.rect(0, 20, 64, 6, 0x4a4c4e); p.rect(0, 20, 64, 1, 0x6a6c6e);
+    p.rect(40, 0, 3, 64, 0x3a3c3e);
+    p.speckle(40, 0x1a1c1e);
+  },
+  ceil_office(p) {             // white ceiling tiles
+    p.fill(0xc8cac6);
+    for (let y = 0; y < 64; y += 32) for (let x = 0; x < 64; x += 32) p.bevel(x, y, 32, 32, 0xd4d6d2, 1);
+    p.noise(0.04);
+  },
   floor_tile(p) {
     p.fill(0x3a3630);
     for (let y = 0; y < 64; y += 16) for (let x = 0; x < 64; x += 16) {

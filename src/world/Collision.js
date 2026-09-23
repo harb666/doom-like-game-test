@@ -28,11 +28,21 @@ function blockingCells(level, ent, x, z, out) {
 
 const tmp = [];
 
+function boxDist2(o, x, z) {
+  const dx = Math.max(0, Math.abs(x - o.x) - o.box[0]), dz = Math.max(0, Math.abs(z - o.z) - o.box[1]);
+  return dx * dx + dz * dz;
+}
+
 function circleHit(ent, x, z, others) {
   for (const o of others) {
     if (o === ent || !o.solidBody) continue;
     // ignore bodies we are clearly above / below (monsters on ledges)
     if (o.y > ent.y + ent.height || ent.y > o.y + o.height) continue;
+    if (o.box) {                                   // furniture: axis-aligned box
+      const d2 = boxDist2(o, x, z), od2 = boxDist2(o, ent.x, ent.z);
+      if (d2 < ent.radius * ent.radius && d2 < od2) return o;
+      continue;
+    }
     const rr = ent.radius + o.radius;
     const dx = x - o.x, dz = z - o.z;
     const d2 = dx * dx + dz * dz;
