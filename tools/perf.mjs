@@ -6,6 +6,7 @@ const browser = await playwright.chromium.launch({ args: ['--use-gl=angle', '--u
 const page = await (await browser.newContext({ viewport: { width: 844, height: 390 } })).newPage();
 page.on('pageerror', e => console.log('[pageerror] ' + e.stack));
 await page.goto('http://localhost:8080/index.html');
+await page.waitForFunction(() => window.game && document.querySelector('[data-act=new]'), null, { timeout: 30000 });
 await page.waitForTimeout(600);
 const r = await page.evaluate(() => {
   const g = window.game, out = [];

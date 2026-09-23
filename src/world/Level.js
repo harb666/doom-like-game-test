@@ -129,7 +129,7 @@ class GeometryBuilder {
       geo.setIndex(g.idx);
       geo.computeBoundingSphere();
       const glow = tex === 'lava' || tex === 'slime' || tex === 'exit' || tex === 'ceil_light';
-      const mat = new THREE.MeshLambertMaterial({ map: textures.get(tex), vertexColors: true });
+      const mat = ignoreKeyLight(new THREE.MeshLambertMaterial({ map: textures.get(tex), vertexColors: true }));
       if (glow) { mat.emissive.setScalar(1); mat.emissiveMap = mat.map; mat.emissiveIntensity = tex === 'ceil_light' ? 0.5 : 0.35; }
       const mesh = new THREE.Mesh(geo, mat);
       mesh.matrixAutoUpdate = false;
@@ -138,6 +138,19 @@ class GeometryBuilder {
     }
     return group;
   }
+}
+
+/**
+ * The level's walls are lit by baked light + nearby dynamic lights only; the
+ * scene's "key light" (which gives 3D models their shading) must not touch them.
+ */
+export function ignoreKeyLight(mat) {
+  mat.onBeforeCompile = (shader) => {
+    shader.fragmentShader = shader.fragmentShader.replace('#include <lights_fragment_begin>',
+      THREE.ShaderChunk.lights_fragment_begin.replace(/#if \( NUM_DIR_LIGHTS > 0 \) && defined\( RE_Direct \)/, '#if 0'));
+  };
+  mat.customProgramCacheKey = () => 'noKeyLight';
+  return mat;
 }
 
 export function lightCurve(l) { return Math.pow(Math.max(0, Math.min(1.2, l)), 2.2); }
@@ -298,14 +311,14 @@ export class Level {
       const thick = d.secret ? C : 0.45;
       const geo = W ? new THREE.BoxGeometry(C, d.height, thick) : new THREE.BoxGeometry(thick, d.height, C);
       const L = this.lightColor(cell, cell.floor + d.height / 2);
-      const face = new THREE.MeshLambertMaterial({ map: textures.get(d.tex) });
+      const face = ignoreKeyLight(new THREE.MeshLambertMaterial({ map: textures.get(d.tex) }));
       face.color.setRGB(...L);
-      const edge = new THREE.MeshLambertMaterial({ map: textures.get(d.secret ? d.tex : 'support') });
+      const edge = ignoreKeyLight(new THREE.MeshLambertMaterial({ map: textures.get(d.secret ? d.tex : 'support') }));
       edge.color.setRGB(L[0] * 0.7, L[1] * 0.7, L[2] * 0.7);
       // Box faces: +x, -x, +y, -y, +z, -z
       const mats = W ? [edge, edge, edge, edge, face, face] : [face, face, edge, edge, edge, edge];
       if (d.secret) { // match the surrounding walls exactly
-        const sec = new THREE.MeshLambertMaterial({ map: this.secretTexture(textures, d, d.height) });
+        const sec = ignoreKeyLight(new THREE.MeshLambertMaterial({ map: this.secretTexture(textures, d, d.height) }));
         sec.color.setRGB(...L);
         mats.fill(sec);
       }
@@ -321,8 +334,8 @@ export class Level {
         const L = this.lightColor(cell, lift.high);
         const sideTex = textures.get('stepside').clone();
         sideTex.needsUpdate = true; sideTex.repeat.set(1, H / C);
-        const side = new THREE.MeshLambertMaterial({ map: sideTex }); side.color.setRGB(L[0] * 0.9, L[1] * 0.9, L[2] * 0.9);
-        const top = new THREE.MeshLambertMaterial({ map: textures.get(cell.floorTex) }); top.color.setRGB(...L);
+        const side = ignoreKeyLight(new THREE.MeshLambertMaterial({ map: sideTex })); side.color.setRGB(L[0] * 0.9, L[1] * 0.9, L[2] * 0.9);
+        const top = ignoreKeyLight(new THREE.MeshLambertMaterial({ map: textures.get(cell.floorTex) })); top.color.setRGB(...L);
         const mesh = new THREE.Mesh(new THREE.BoxGeometry(C, H, C), [side, side, top, side, side, side]);
         mesh.position.set((cell.cx + 0.5) * C, lift.h - H / 2, (cell.cz + 0.5) * C);
         lift.meshes.push(mesh);

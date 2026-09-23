@@ -9,6 +9,7 @@ const page = await (await browser.newContext({ viewport: { width: 900, height: 4
 const errors = [];
 page.on('pageerror', e => errors.push('[pageerror] ' + e.stack));
 await page.goto('http://localhost:8080/index.html');
+await page.waitForFunction(() => window.game && document.querySelector('[data-act=new]'), null, { timeout: 30000 });
 await page.waitForTimeout(800);
 const res = await page.evaluate(async () => {
   const { LEVELS } = await import('./src/world/levels/index.js');

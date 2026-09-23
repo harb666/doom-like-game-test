@@ -46,6 +46,10 @@ export class Game {
     this.ambientLight = new THREE.AmbientLight(0xffffff, Math.PI);
     this.scene.add(this.ambientLight);
     this.lights = new DynamicLights(this.scene);
+    // key light: gives 3D models shape and shine (the level ignores it - it has baked lighting)
+    this.keyLight = new THREE.DirectionalLight(0xfff0e0, 1.05);
+    this.keyLight.position.set(0.45, 1, 0.35);
+    this.scene.add(this.keyLight);
     this.camera = new THREE.PerspectiveCamera(70, 1, 0.05, 200);
     this.textures = new TextureLibrary(this.renderer);
     this.glowTex = glowTexture();

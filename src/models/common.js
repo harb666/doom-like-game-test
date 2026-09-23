@@ -49,6 +49,13 @@ export class MaterialSet {
     this.list.push(m);
     return m;
   }
+  /** Register a material made elsewhere so it is lit / flashed with the rest of the model. */
+  adopt(m, glow = false) {
+    m.userData.base = m.color.clone();
+    m.userData.glow = glow || !!m.userData.glow || !m.emissive;
+    this.list.push(m);
+    return m;
+  }
   /** Multiply every base colour by the light colour (r, g, b). */
   setLight(r, g, b) {
     const key = `${r.toFixed(2)}${g.toFixed(2)}${b.toFixed(2)}`;

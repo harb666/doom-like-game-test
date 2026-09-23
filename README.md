@@ -98,8 +98,11 @@ src/
   effects/Effects.js     Blood, sparks, explosions, screen flashes, shake
   gfx/Lighting.js        Baked coloured lighting with shadows (Quake-style lightmaps)
   gfx/DynamicLights.js   Real-time lights from muzzle flashes, rockets, fireballs
-  models/common.js       Helpers for building low-poly 3D models
-  models/creatures.js    3D monsters + VEX, with joint animations
+  models/common.js       Helpers for building simple 3D models (items, guns)
+  models/creatures.js    Monsters + VEX: picks the sculpted model and its animation
+  models/skinned.js      Loads the sculpted models (assets/models/*.bin), near/far detail
+  models/rigs.js         Skeleton animations (walk, aim, fire, pain, death...)
+  models/paint.js        Painted face make-up and clothing details for VEX
   models/weapons.js      3D guns (first person and pickups)
   models/items.js        3D pickups, canisters, lamps
   audio/Audio.js         Sound effects (synthesised)
@@ -108,7 +111,23 @@ src/
   ui/HUD.js              Health / armour / ammo display
   ui/Menus.js            All menu screens
   ui/Automap.js          Map overlay
+assets/models/           Sculpted, skinned character models (generated, see below)
 tools/                   Automated tests (run in a headless browser; developer use)
+tools/modelgen/          The character sculptor: specs/*.mjs describe each model
+```
+
+## Character models
+
+Every character is sculpted in code from smooth blended shapes (muscles, skulls, ribs,
+jaws, hair), turned into a detailed mesh (20,000–70,000 triangles), coloured with
+skin, veins and grime, shaded with baked shadowing and rigged with a skeleton so it
+can walk, aim and die. Each file also carries a lighter copy used when the character
+is far away, which keeps iPhones running smoothly. To rebuild after editing a spec:
+
+```
+node tools/modelgen/build.mjs            # all models
+node tools/modelgen/build.mjs hellmaw    # just one
+node tools/modelview.mjs hellmaw three-quarter   # studio picture (needs the local server)
 ```
 
 ## Making changes (for the game director)

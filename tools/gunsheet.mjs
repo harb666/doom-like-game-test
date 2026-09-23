@@ -6,6 +6,7 @@ const browser = await playwright.chromium.launch({ args: ['--use-gl=angle', '--u
 const page = await (await browser.newContext({ viewport: { width: 700, height: 330 } })).newPage();
 page.on('pageerror', e => console.log('[pageerror] ' + e.stack));
 await page.goto('http://localhost:8080/index.html');
+await page.waitForFunction(() => window.game && document.querySelector('[data-act=new]'), null, { timeout: 30000 });
 await page.waitForTimeout(600);
 await page.evaluate(() => { const g = window.game; g.newGame('normal'); g.godMode = true; for (const id of ['scattergun', 'repeater', 'lancer', 'hellbore']) g.weapons.giveWeapon(id, 10); });
 for (const id of ['pistol', 'machinegun', 'scattergun', 'repeater', 'lancer', 'hellbore']) {

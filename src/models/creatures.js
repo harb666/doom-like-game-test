@@ -7,6 +7,8 @@
 import * as THREE from 'three';
 import { MaterialSet, box, cyl, ball, cone, joint, put, paintedTexture, mergeStatic, capsule, smoothSphere, shade as shadeGeo } from './common.js';
 import { glowTexture } from '../effects/Effects.js';
+import { hasModel, instantiate } from './skinned.js';
+import * as rigs from './rigs.js';
 
 const PI = Math.PI;
 
@@ -491,8 +493,42 @@ const BUILDERS = {
   },
 };
 
+// How each sculpted (skinned) model is animated.
+const RIGS = {
+  ally: { fn: rigs.humanoid, cfg: { aim: { rz: -0.12, lz: 0.55 } }, thickness: 0.25 },
+  husk: { fn: rigs.humanoid, cfg: { hunch: 0.35, jawIdle: 0.25, stride: 0.45 }, thickness: 0.3 },
+  rifter: { fn: rigs.humanoid, cfg: { aim: { rz: -0.1, lz: 0.5 } }, thickness: 0.3 },
+  ravager: { fn: rigs.humanoid, cfg: { hunch: 0.45, jawIdle: 0.2, stride: 0.55 }, thickness: 0.55 },
+  warden: { fn: rigs.humanoid, cfg: { hunch: 0.12, jawIdle: 0.1, stride: 0.45, aim: { twoHanded: false, rz: -0.05 } }, thickness: 0.8 },
+  spitter: { fn: rigs.spitter, thickness: 0.8 },
+  hound: { fn: rigs.hound, thickness: 0.6 },
+  hellmaw: { fn: rigs.hellmaw, death: rigs.hellmawDeath, thickness: 1.0 },
+  wraith: { fn: rigs.wraith, thickness: 0.6 },
+};
+
 /** Build a model. Returns an object with .root (add to the scene) and .update(). */
 export function buildCreature(type) {
+  if (hasModel(type) && RIGS[type]) {
+    const inst = instantiate(type), rig = RIGS[type], B = inst.bones;
+    const root = new THREE.Group();
+    root.add(inst.root);
+    return {
+      root, mats: inst.mats, float: type === 'hellmaw' || type === 'wraith',
+      update(pose, t, poseT, deathT) {
+        const firing = pose === 'fire', casting = pose === 'aim' || pose === 'fire';
+        for (const m of inst.extras.muzzles) m.visible = firing;
+        for (const g of inst.extras.glows) if (g.tag === 'cast') { g.visible = casting; g.scale.setScalar(firing ? 1.3 : 0.8); }
+        if (pose === 'dead') {
+          if (rig.death) rig.death(B, deathT); else animDeath(inst.root, deathT, rig.thickness);
+          for (const m of inst.extras.muzzles) m.visible = false;
+          return;
+        }
+        inst.root.rotation.x = 0; inst.root.position.y = 0;
+        rig.fn(B, pose, t, poseT, rig.cfg);
+      },
+      dispose() { inst.mats.dispose(); },
+    };
+  }
   const m = BUILDERS[type]();
   const root = new THREE.Group();
   root.add(m.P ? m.P.root : m.root);

@@ -11,6 +11,7 @@ const errors = [];
 page.on('pageerror', e => errors.push('[pageerror] ' + e.stack));
 page.on('console', m => { if (m.type() === 'error' && !m.text().includes('ERR_CERT')) errors.push(m.text()); });
 await page.goto('http://localhost:8080/index.html');
+await page.waitForFunction(() => window.game && document.querySelector('[data-act=new]'), null, { timeout: 30000 });
 await page.waitForTimeout(800);
 await page.screenshot({ path: `${OUT}/mobile-title.png` });
 await page.tap('[data-act=new]'); await page.waitForTimeout(200);
