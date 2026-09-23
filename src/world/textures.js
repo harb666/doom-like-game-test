@@ -136,14 +136,14 @@ const painters = {
     for (let i = 0; i < 12; i++) p.ellipse(p.rng() * 64, p.rng() * 64, 6 + p.rng() * 10, 4 + p.rng() * 8, mixColor(0xc9c1c9, 0xc2bac2, p.rng()));
     p.speckle(30, 0xd6d0d6);
   },
-  carpet(p) {                  // dark grey-green carpet tiles with a woven fleck
-    p.fill(0x505852);
+  carpet(p) {                  // grey carpet tiles with a soft woven cross-hatch
+    p.fill(0x6a6e6a);
     for (let y = 0; y < 64; y++) for (let x = 0; x < 64; x++) {
       const r = p.rng();
-      if (r < 0.22) p.px(x, y, 0x7a847c); else if (r < 0.4) p.px(x, y, 0x3c423e);
+      if (r < 0.18) p.px(x, y, 0x7a7e7a); else if (r < 0.34) p.px(x, y, 0x5e625e);
     }
-    for (let i = 0; i < 40; i++) { const x = p.rng() * 64, y = p.rng() * 64; p.line(x, y, x + 3, y, 0x9aa49a); }
-    p.rect(0, 0, 64, 1, 0x3a403c); p.rect(0, 32, 64, 1, 0x3a403c); p.rect(0, 0, 1, 64, 0x3a403c); p.rect(32, 0, 1, 64, 0x3a403c);
+    for (let i = 0; i < 30; i++) { const x = p.rng() * 64, y = p.rng() * 64; p.line(x, y, x + 4, y, 0x868a86); p.line(x + 1, y + 2, x + 1, y + 5, 0x585c58); }
+    p.rect(0, 0, 64, 1, 0x4a4e4a); p.rect(0, 0, 1, 64, 0x4a4e4a);
   },
   floor_mat(p) {               // ribbed entrance matting
     p.fill(0x2a2c2e);

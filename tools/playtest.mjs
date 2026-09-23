@@ -109,7 +109,7 @@ await check('walk from lift onto ledge, get blue key', () => {
   return { ok: onLedge && g.player.keys.has('blue'), info: { trace: window.__trace, onLedge, x: g.player.x.toFixed(2), y: g.player.y.toFixed(2), lift: g.level.lifts.get('L').state, blockers: g.solidBodies.filter(b => b !== g.player && Math.hypot(b.x - g.player.x, b.z - g.player.z) < 2).map(b => b.type || 'x') } };
 });
 await check('find secret closet', () => {
-  const g = window.game; const s0 = g.stats.secrets; T.tp(14, 35, -90); T.press('use'); T.step(1.0); T.move(0, 1); T.step(0.8); T.move(0, 0);
+  const g = window.game; const s0 = g.stats.secrets; T.tp(7, 40, -90); T.press('use'); T.step(1.0); T.move(0, 1); T.step(0.8); T.move(0, 0);
   return { ok: g.stats.secrets === s0 + 1, info: { secrets: g.stats.secrets, of: g.stats.secretsTotal, x: g.player.x } };
 });
 await check('barrel explodes and kills', () => {

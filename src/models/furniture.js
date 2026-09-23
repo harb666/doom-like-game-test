@@ -9,18 +9,21 @@ const PI = Math.PI;
 
 // ------------------------------------------------------------------ desks
 /** Straight run of the security counter: work top, thick end panels, dark modesty panel, raised front. */
-function deskRun(g, K, { len = 4, depth = 0.8, ends = [true, true] } = {}) {
-  const white = K(0xc6c8c4), dark = K(0x1c1c1e);
+function deskRun(g, K, { len = 4, depth = 0.8, ends = [true, true], plain = false } = {}) {
+  const white = K(0xb8bab8), dark = K(0x1c1c1e);
   put(g, box(len, 0.06, depth, white, 'bottom'), 0, 0.72, 0);                                   // work top
   put(g, box(len, 0.64, 0.05, dark, 'bottom'), 0, 0.06, -depth * 0.1);                          // modesty panel
-  put(g, box(len, 1.08, 0.08, white, 'bottom'), 0, 0, depth / 2 - 0.04);                         // front (visitor side)
-  put(g, box(len + 0.02, 0.05, 0.3, white, 'bottom'), 0, 1.08, depth / 2 - 0.1);                 // counter cap
+  if (plain) put(g, box(len, 0.72, 0.05, white, 'bottom'), 0, 0, depth / 2 - 0.03);              // flat front
+  else {
+    put(g, box(len, 1.08, 0.08, white, 'bottom'), 0, 0, depth / 2 - 0.04);                       // raised front (visitor side)
+    put(g, box(len + 0.02, 0.05, 0.3, white, 'bottom'), 0, 1.08, depth / 2 - 0.1);               // counter cap
+  }
   for (const [i, s] of [[0, -1], [1, 1]]) if (ends[i]) put(g, box(0.07, 0.78, depth, white, 'bottom'), s * (len / 2 - 0.035), 0, 0);
 }
 
 /** Curved section of the counter (bulges out towards the visitor). */
 function deskCurve(g, K, { r = 2, depth = 0.8, from = 0, to = 1.2 } = {}) {
-  const white = K(0xc6c8c4);
+  const white = K(0xb8bab8);
   const r0 = r - depth / 2, r1 = r + depth / 2;
   const shape = new THREE.Shape();
   shape.absarc(0, 0, r1, from, to, false);
@@ -34,8 +37,14 @@ function deskCurve(g, K, { r = 2, depth = 0.8, from = 0, to = 1.2 } = {}) {
     c.translate(0, y + h / 2, 0);
     g.add(new THREE.Mesh(shade(c), K(color, { side: THREE.DoubleSide })));
   };
-  arc(r1 - 0.02, 1.08, 0, 0xc6c8c4);
+  arc(r1 - 0.02, 0.92, 0.18, 0xa4a8ac);          // brushed metal front
+  arc(r1 - 0.05, 0.18, 0, 0x7e8286);             // steel kick strip
   arc(r0 + 0.1, 0.64, 0.06, 0x1c1c1e);
+  // bolts on the front panel
+  const bolt = K(0x55585c);
+  for (let a = from + 0.12; a < to - 0.05; a += 0.28) for (const y of [0.32, 1.0]) {
+    put(g, cyl(0.012, 0.012, 0.02, bolt, 6, 'center'), Math.cos(a) * r1, y, Math.sin(a) * r1, PI / 2, 0, -a + PI / 2).rotation.order = 'YXZ';
+  }
   const cap = new THREE.Shape();
   cap.absarc(0, 0, r1, from, to, false); cap.absarc(0, 0, r1 - 0.3, to, from, true);
   const cg = new THREE.ExtrudeGeometry(cap, { depth: 0.05, bevelEnabled: false, curveSegments: 24 });
@@ -91,10 +100,16 @@ function bench(g, K, { len = 2 } = {}) {         // slatted wooden console / ben
 }
 
 // ------------------------------------------------------------------ fittings
-function slatScreen(g, K, { len = 2, h = 2.6 } = {}) {
-  const wood = K(0xc8904a, { grain: true }), wood2 = K(0xb07a3a, { grain: true });
-  for (let x = -len / 2 + 0.05, i = 0; x <= len / 2; x += 0.14, i++) put(g, box(0.06, h, 0.1, i % 2 ? wood : wood2, 'bottom'), x, 0, 0);
-  put(g, box(len + 0.04, 0.06, 0.12, wood2, 'bottom'), 0, h, 0);
+function slatScreen(g, K, { len = 2, h = 2.6 } = {}) {       // tall oak slats with open gaps
+  const wood = K(0xc8904a, { grain: true }), wood2 = K(0xb88242, { grain: true });
+  const n = Math.max(2, Math.round(len / 0.2));
+  for (let i = 0; i < n; i++) put(g, box(0.08, h, 0.14, i % 2 ? wood : wood2, 'bottom'), -len / 2 + 0.04 + i * (len - 0.08) / (n - 1), 0, 0);
+}
+
+/** A flat panel faced with one of the level's textures (e.g. the cork feature wall). */
+function panel(g, K, { w = 4, h = 3, tex = 'cork', textures } = {}) {
+  const t = textures.get(tex).clone(); t.needsUpdate = true; t.repeat.set(w / 2, h / 2); t.userData.owned = true;
+  put(g, box(w, h, 0.04, K(0xffffff, { map: t }), 'bottom'), 0, 0, 0.02);
 }
 
 function detectorArch(g, K) {                   // walk-through security arch
@@ -109,7 +124,7 @@ function detectorArch(g, K) {                   // walk-through security arch
   put(g, box(0.36, 0.08, 0.02, lit, 'center'), 0, 2.2, -0.31);
 }
 
-function plant(g, K, { h = 1.9 } = {}) {
+function plant(g, K, { h = 1.9, broad = false } = {}) {
   const pot = K(0x151517), soil = K(0x2a2018), leafA = K(0x3a7a2a, { side: THREE.DoubleSide }), leafB = K(0x5a9a3a, { side: THREE.DoubleSide }), stem = K(0x4a5a2a);
   put(g, cyl(0.2, 0.16, 0.5, pot, 14, 'bottom'), 0, 0, 0);
   put(g, cyl(0.18, 0.18, 0.02, soil, 12, 'bottom'), 0, 0.46, 0);
@@ -117,8 +132,9 @@ function plant(g, K, { h = 1.9 } = {}) {
   const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
   for (let i = 0; i < 4; i++) put(g, cyl(0.015, 0.02, h - 0.4 - i * 0.2, stem, 5, 'bottom'), (rnd() - 0.5) * 0.12, 0.45, (rnd() - 0.5) * 0.12, (rnd() - 0.5) * 0.2, 0, (rnd() - 0.5) * 0.2);
   // long arching palm-like leaves: each a bent strip of quads
-  for (let i = 0; i < 16; i++) {
-    const a = i / 16 * PI * 2 + rnd() * 0.4, y0 = 0.9 + rnd() * (h - 1.1), len = 0.45 + rnd() * 0.35, w = 0.09;
+  const nLeaves = broad ? 11 : 16;
+  for (let i = 0; i < nLeaves; i++) {
+    const a = i / nLeaves * PI * 2 + rnd() * 0.4, y0 = 0.9 + rnd() * (h - 1.1), len = broad ? 0.55 + rnd() * 0.3 : 0.45 + rnd() * 0.35, w = broad ? 0.24 : 0.09;
     const pos = [], n = 6;
     for (let k = 0; k <= n; k++) {
       const t = k / n, out = t * len, up = Math.sin(t * PI * 0.8) * 0.18 - t * t * 0.25, ww = w * Math.sin(Math.min(1, t * 1.3 + 0.15) * PI);
@@ -156,11 +172,74 @@ function duct(g, K, { len = 10, r = 0.2 } = {}) {       // runs along local x
   for (let x = -len / 2 + 0.6; x < len / 2; x += 1.2) put(g, cyl(r + 0.012, r + 0.012, 0.05, band, 14, 'center'), x, 0, 0, 0, 0, PI / 2);
 }
 
-function pendant(g, K, { drop = 0.7 } = {}) {           // hangs from the ceiling at the origin
-  const black = K(0x2a2a2c), rim = K(0xd8dadc);
-  put(g, cyl(0.008, 0.008, drop, black, 4, 'top'), 0, 0, 0);
-  put(g, cyl(0.1, 0.13, 0.26, rim, 14, 'top'), 0, -drop, 0);
-  put(g, cyl(0.11, 0.11, 0.01, K(0xfff4dc, { basic: true }), 14, 'top'), 0, -drop - 0.26, 0);
+function pendant(g, K, { drop = 0.7 } = {}) {           // white cylinder downlight on a cable
+  const cable = K(0x2a2a2c), body = K(0xe0e2e2);
+  put(g, cyl(0.006, 0.006, drop, cable, 4, 'top'), 0, 0, 0);
+  put(g, cyl(0.11, 0.11, 0.24, body, 16, 'top'), 0, -drop, 0);
+  put(g, cyl(0.08, 0.08, 0.01, K(0xfff8e8, { basic: true }), 14, 'top'), 0, -drop - 0.24, 0);
+}
+
+function diffuser(g, K, { drop = 0.6, r = 0.16 } = {}) {  // duct drop with a round swirl diffuser
+  const m = K(0x9ea2a6), w = K(0xe8e8e6), d = K(0x6a6e72);
+  put(g, cyl(r, r, drop, m, 14, 'top'), 0, 0, 0);
+  put(g, cyl(r + 0.14, r + 0.14, 0.05, w, 20, 'top'), 0, -drop, 0);
+  put(g, cyl(r * 0.6, r * 0.6, 0.01, d, 12, 'top'), 0, -drop - 0.05, 0);
+}
+
+function ceilingUnit(g, K, { w = 1.1, d = 1.1 } = {}) {   // air handling cassette boxed into the ceiling
+  put(g, box(w, 0.34, d, K(0xdcdcda), 'top'), 0, 0, 0);
+  put(g, box(w * 0.8, 0.01, d * 0.2, K(0x6a6c6e), 'top'), 0, -0.34, 0);
+}
+
+function cableTray(g, K, { len = 8 } = {}) {              // perforated tray along local x
+  const m = K(0x8a8c8e);
+  put(g, box(len, 0.01, 0.3, m, 'top'), 0, 0, 0);
+  for (const s of [-1, 1]) put(g, box(len, 0.06, 0.01, m, 'top'), 0, 0.05, s * 0.15);
+}
+
+function domeCam(g, K) {
+  put(g, box(0.16, 0.03, 0.16, K(0xe0e0e0), 'center'), 0, 0, 0.02);
+  const d = new THREE.Mesh(shade(new THREE.SphereGeometry(0.07, 10, 6, 0, PI * 2, PI / 2, PI / 2)), K(0x151517));
+  d.rotation.x = -PI / 2; d.position.set(0, 0, 0.04); g.add(d);
+}
+
+function glassFront(g, K, { len = 8, h = 2.7, doorAt = 0, doorW = 2.2 } = {}) {  // along local x, facing +z
+  const frame = K(0x121214), pane = K(0xffffff, { basic: true, map: nightTexture() }), handle = K(0xb8bcc0);
+  const glass = new THREE.Mesh(new THREE.PlaneGeometry(len, h), pane);
+  const uv = glass.geometry.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setX(i, uv.getX(i) * len / 4);
+  pane.map.wrapS = THREE.RepeatWrapping;
+  glass.position.set(0, h / 2, 0.02); g.add(glass);
+  put(g, box(len, 0.1, 0.1, frame, 'center'), 0, h, 0.05);
+  put(g, box(len, 0.08, 0.1, frame, 'center'), 0, 0.04, 0.05);
+  const posts = [-len / 2, len / 2, doorAt - doorW / 2, doorAt, doorAt + doorW / 2];
+  for (let x = -len / 2 + 1.3; x < len / 2 - 0.3; x += 1.3) if (Math.abs(x - doorAt) > doorW / 2 + 0.3) posts.push(x);
+  for (const x of posts) put(g, box(0.09, h, 0.1, frame, 'bottom'), x, 0, 0.05);
+  put(g, box(doorW, 0.08, 0.1, frame, 'center'), doorAt, 2.25, 0.05);                      // door head
+  for (const s of [-1, 1]) {
+    put(g, box(0.025, 0.5, 0.025, handle, 'center'), doorAt + s * 0.12, 1.05, 0.14);
+    put(g, box(0.1, 0.06, 0.04, frame, 'center'), doorAt + s * 0.5, 2.36, 0.12);            // closers
+  }
+}
+
+function plaques(g, K) {                                  // 2 x 2 certificates in black frames
+  for (const [x, y] of [[-0.22, 0.17], [0.22, 0.17], [-0.22, -0.17], [0.22, -0.17]]) {
+    put(g, box(0.36, 0.26, 0.02, K(0x141414), 'center'), x, y, 0.01);
+    put(g, box(0.3, 0.2, 0.01, K(0xffffff, { map: artTexture('cert') }), 'center'), x, y, 0.024);
+  }
+}
+
+function mug(g, K, { color = 0xf0f0ee } = {}) {
+  put(g, cyl(0.04, 0.04, 0.1, K(color), 10, 'bottom'));
+  put(g, box(0.02, 0.05, 0.015, K(color), 'center'), 0.05, 0.05, 0);
+}
+function bottle(g, K, { color = 0xd8e8f0 } = {}) {
+  put(g, cyl(0.035, 0.035, 0.2, K(color), 10, 'bottom'));
+  put(g, cyl(0.015, 0.02, 0.04, K(0x2a5ab0), 8, 'bottom'), 0, 0.2, 0);
+}
+function phone(g, K) {
+  put(g, box(0.2, 0.05, 0.22, K(0x2a2a2c), 'bottom'), 0, 0, 0, -0.2, 0, 0);
+  put(g, box(0.06, 0.03, 0.2, K(0x1a1a1c), 'bottom'), -0.07, 0.06, 0);
+  put(g, box(0.08, 0.004, 0.05, K(0x7ab0e0, { basic: true }), 'bottom'), 0.04, 0.075, -0.05, -0.2, 0, 0);
 }
 
 function pcTower(g, K) {
@@ -207,6 +286,7 @@ function wallSign(g, K, { text = 'INTAKE', w = 2.2, h = 0.6 } = {}) {
 }
 
 export const FURNITURE = {
+  panel, diffuser, ceilingUnit, cableTray, domeCam, glassFront, plaques, mug, bottle, phone,
   deskRun, deskCurve, officeDesk, officeChair, armchair, sideTable, bench, slatScreen, detectorArch, plant,
   tv, frame, exitSign, duct, pendant, pcTower, bin, monitor, keyboard, papers, videoWall, wallSign,
 };
@@ -232,12 +312,34 @@ function artTexture(kind) {
         c.beginPath(); c.arc(W * 0.55, H * 0.45, 12 + i * 7, i * 0.6, i * 0.6 + 2.4); c.stroke();
       }
       c.fillStyle = '#ffd0f0'; c.beginPath(); c.arc(W * 0.55, H * 0.45, 6, 0, 7); c.fill();
-    } else {                                                            // pale architectural print
+    } else if (kind === 'cert') {                                       // framed certificate
+      c.fillStyle = '#f4f2ec'; c.fillRect(0, 0, W, H);
+      c.fillStyle = '#2a2a2a'; c.fillRect(20, 20, W - 40, 8);
+      c.fillStyle = '#8a8a8a'; for (let y = 44; y < H - 30; y += 12) c.fillRect(16, y, W - 32 - (y % 3) * 10, 4);
+      c.fillStyle = '#b01818'; c.beginPath(); c.arc(W - 26, H - 22, 9, 0, 7); c.fill();
+    } else {                                                            // black and white photo print
       c.fillStyle = '#e8e6e0'; c.fillRect(0, 0, W, H);
-      c.strokeStyle = '#6a6a66'; c.lineWidth = 1.5;
-      for (let i = 0; i < 6; i++) { c.strokeRect(14 + i * 3, 30 + i * 5, W - 28 - i * 6, H - 70 - i * 6); }
-      c.beginPath(); c.moveTo(14, H - 40); c.lineTo(W / 2, 24); c.lineTo(W - 14, H - 40); c.stroke();
+      const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#9a9a9a'); g.addColorStop(1, '#2a2a2a');
+      c.fillStyle = g; c.fillRect(10, 10, W - 20, H - 20);
+      c.fillStyle = '#d8d8d8'; for (let i = 0; i < 6; i++) c.fillRect(20 + i * 16, 60 - i * 4, 10, 80);
+      c.fillStyle = '#1a1a1a'; c.fillRect(10, H - 40, W - 20, 30);
     }
+  }));
+}
+function nightTexture() {                                 // car park at night seen through the glass
+  return cachedTex('night', () => canvasTex(256, 172, (c, W, H) => {
+    const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#05070a'); g.addColorStop(0.55, '#0e1418'); g.addColorStop(1, '#1a1e22');
+    c.fillStyle = g; c.fillRect(0, 0, W, H);
+    c.fillStyle = '#0a0e0c'; for (let x = 0; x < W; x += 30) { c.beginPath(); c.ellipse(x + 10, 92, 18, 22, 0, 0, 7); c.fill(); }  // trees
+    c.fillStyle = '#23282c'; c.fillRect(0, 110, W, H - 110);
+    c.strokeStyle = '#8a8a60'; c.lineWidth = 1; for (let x = -40; x < W; x += 26) { c.beginPath(); c.moveTo(x, H); c.lineTo(x + 30, 116); c.stroke(); }
+    for (const x of [40, 150, 230]) {                                // street lights
+      c.fillStyle = '#2a2e32'; c.fillRect(x, 40, 2, 72);
+      const r = c.createRadialGradient(x + 1, 40, 0, x + 1, 40, 16); r.addColorStop(0, 'rgba(255,230,170,1)'); r.addColorStop(1, 'rgba(255,230,170,0)');
+      c.fillStyle = r; c.fillRect(x - 16, 24, 34, 34);
+    }
+    c.fillStyle = '#40ff80'; c.fillRect(100, 100, 3, 2);
+    c.strokeStyle = 'rgba(160,180,200,0.12)'; c.lineWidth = 8; for (const x of [30, 120, 200]) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x + 50, H); c.stroke(); }  // reflections
   }));
 }
 function exitTexture() {

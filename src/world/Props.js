@@ -56,7 +56,7 @@ export class Props {
       const make = FURNITURE[type];
       if (!make) throw new Error(`Level ${def.id}: unknown prop "${type}"`);
       const g = new THREE.Group();
-      make(g, K, { ...opts, screens: this.feeds });
+      make(g, K, { ...opts, screens: this.feeds, textures: this.game.textures });
       const rot = turn * Math.PI / 180;
       g.position.set(x, opts.y ?? level.floorAt(x, z), z);
       g.rotation.y = rot;
@@ -72,6 +72,7 @@ export class Props {
     scratch.updateMatrixWorld(true);
     this.merge(scratch, level);
     this.owned.push(...mats.values());
+    for (const m of mats.values()) if (m.map?.userData.owned) this.owned.push(m.map);
   }
 
   /** Merge every mesh by material, baking the level light into lit ones. */
