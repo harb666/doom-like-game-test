@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Mawbreaker">
+  <meta name="theme-color" content="#000000">
+  <title>Mawbreaker</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <link rel="icon" href="icons/icon-180.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
+  <link rel="stylesheet" href="css/style.css">
+  <script type="importmap">
+    { "imports": { "three": "./vendor/three/three.module.js" } }
+  </script>
+</head>
+<body>
+  <div id="app">
+    <div id="view"></div>
+    <canvas id="weapon-canvas"></canvas>
+    <div id="crosshair"></div>
+    <div id="screen-flash"></div>
+    <canvas id="automap"></canvas>
+
+    <!-- In-game heads-up display -->
+    <div id="hud" class="hidden">
+      <div class="hud-left">
+        <div class="hud-stat"><span class="hud-label">HEALTH</span><span id="hud-health" class="hud-value">100</span></div>
+        <div class="hud-stat"><span class="hud-label">ARMOR</span><span id="hud-armor" class="hud-value armor">0</span></div>
+        <div id="hud-keys"></div>
+      </div>
+      <div id="hud-messages"></div>
+      <div class="hud-right" id="hud-weapon-box">
+        <div class="hud-stat"><span id="hud-weapon-name" class="hud-label">RIVET PISTOL</span><span id="hud-ammo" class="hud-value ammo">50</span></div>
+        <div id="hud-slots"></div>
+      </div>
+      <div id="hud-fps" class="hidden"></div>
+      <div id="hud-boss" class="hidden"><div id="hud-boss-name"></div><div class="boss-bar"><div id="hud-boss-fill"></div></div></div>
+    </div>
+
+    <!-- Touch controls (shown only on touch devices while playing) -->
+    <div id="touch" class="hidden">
+      <div id="stick-base"><div id="stick-knob"></div></div>
+      <button class="tbtn" id="btn-pause" aria-label="Pause">II</button>
+      <button class="tbtn" id="btn-map" aria-label="Map">MAP</button>
+      <button class="tbtn" id="btn-weapon" aria-label="Next weapon">WPN</button>
+      <button class="tbtn" id="btn-use" aria-label="Use">USE</button>
+      <button class="tbtn" id="btn-fire" aria-label="Fire">FIRE</button>
+    </div>
+
+    <div id="rotate-hint" class="hidden">Turn your phone sideways for the best experience</div>
+
+    <!-- Menus -->
+    <div id="menu-root"></div>
+  </div>
+  <noscript>This game needs JavaScript enabled.</noscript>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
